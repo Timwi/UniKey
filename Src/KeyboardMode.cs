@@ -26,6 +26,10 @@ namespace UniKey
     {
         public string Key;
         public string Value;
+        public override string ToString()
+        {
+            return Key + " ⇒ " + Value;
+        }
     }
 
     internal class KeyboardMode
@@ -41,7 +45,7 @@ namespace UniKey
         {
             if (Shortcuts != null)
                 foreach (var sh in Shortcuts.OrderBy(kvp => -kvp.Key.Length))
-                    if (buffer.EndsWith(sh.Key))
+                    if (buffer.EndsWith(sh.Key, StringComparison.Ordinal))
                         return new ReplaceResult(sh.Key.Length, sh.Value);
             return null;
         }
@@ -143,7 +147,10 @@ namespace UniKey
             if (key == Keys.LControlKey || key == Keys.RControlKey || key == Keys.Escape || key == Keys.Enter || key == Keys.Return || key == Keys.Tab)
                 Buffer = string.Empty;
             else if (key == Keys.Back && Buffer.Length > 0)
+            {
                 Buffer = Buffer.Substring(0, Buffer.Length - 1);
+                if (LastBufferCheck > 0) LastBufferCheck--;
+            }
 
             bool alt = Program.Pressed.Contains(Keys.LMenu) || Program.Pressed.Contains(Keys.RMenu);
             bool ctrl = Program.Pressed.Contains(Keys.LControlKey) || Program.Pressed.Contains(Keys.RControlKey);
@@ -181,53 +188,4 @@ namespace UniKey
                 "ä¬>ae;ö¬>oe;ü¬>ue;Ä¬>Ae;Ö¬>Oe;Ü¬>Ue;Ä¦>AE;Ö¦>OE;Ü¦>UE");
         }
     }
-
-    internal class CyrCycle
-    {
-        public char BaseChar;
-        public string Sequence;
-    }
-
-    /*
-    internal class CyrMode : KeyboardMode
-    {
-        public CyrMode()
-            : base()
-        {
-            @"
-аӑӓӕ
-б
-вѵѷ
-гѓґғҕ
-д
-еёэєҽҿӗәӛѥ
-жҗӂӝѧѩѫѭ
-зҙӟѯӡ
-ийӣӥ
-кќқҝҟҡӄҁ
-лљ
-м
-нњңҥӈ
-оѻӧөӫѽѿ
-пҧѱ
-р
-сҫ
-тҭҵ
-уўӯӱӳүұѹ
-фѳ
-хҳ
-цџ
-чҷҹӌӵһҩ
-шщ
-ьыъѣӹ
-ю
-я
-ђћ
-ѕ
-іїјӀ
-ѡ
-
-".Fmt();
-        }
-    }*/
 }

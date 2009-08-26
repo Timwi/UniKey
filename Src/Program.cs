@@ -45,7 +45,7 @@ namespace UniKey
             Modes.Add(" ", new KeyboardMode());
             Modes.Add("eo", new EoMode());
             Modes.Add("de", new DeMode());
-            // Modes.Add("cyr", new CyrMode());
+            Modes.Add("cyr", new CyrMode());
             Modes.Add("u", new UniversalMode());
 
             KeyboardListener = new GlobalKeyboardListener();
