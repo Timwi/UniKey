@@ -187,10 +187,17 @@ namespace UniKey
             parse("ae>ä;oe>ö;ue>ü;AE>Ä;OE>Ö;UE>Ü;Ae>Ä;Oe>Ö;Ue>Ü;" +
                 "ä¬>ae;ö¬>oe;ü¬>ue;Ä¬>Ae;Ö¬>Oe;Ü¬>Ue;Ä¦>AE;Ö¦>OE;Ü¦>UE;" +
                 "aue>aue;AUE>AUE;Aue>Aue;eue>eue;EUE>EUE;Eue>Eue;" +
-                "söben>soeben;zürst>zuerst;Söben>Soeben;" +
-                "Zürst>Zuerst;SÖBEN>SOEBEN;ZÜRST>ZUERST;" +
+                "söben>soeben;SÖBEN>SOEBEN;Söben>Soeben;" +
+                "zürst>zuerst;ZÜRST>ZUERST;Zürst>Zuerst;" +
                 "Getue>Getue;GETUE>GETUE;" +
-                "Getuet>Getüt;GETUET>GETÜT;");
+                "Getuet>Getüt;GETUET>GETÜT;" +
+                "Statue>Statue;STATUE>STATUE;" +
+                "que>que;QUE>QUE;Que>Que;" +
+                "sexue>sexue;SEXUE>SEXUE;Sexue>Sexue;" +
+                "köx>koex;KÖX>KOEX;Köx>Koex;" +
+                "pöt>poet;PÖT>POET;Pöt>Poet;" +
+                "Pösie>Poesie;PÖSIE>POESIE;" +
+                "kongrue>kongrue;KONGRUE>KONGRUE;Kongrue>Kongrue;");
         }
     }
 }
