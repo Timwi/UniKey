@@ -185,7 +185,12 @@ namespace UniKey
             : base()
         {
             parse("ae>ä;oe>ö;ue>ü;AE>Ä;OE>Ö;UE>Ü;Ae>Ä;Oe>Ö;Ue>Ü;" +
-                "ä¬>ae;ö¬>oe;ü¬>ue;Ä¬>Ae;Ö¬>Oe;Ü¬>Ue;Ä¦>AE;Ö¦>OE;Ü¦>UE");
+                "ä¬>ae;ö¬>oe;ü¬>ue;Ä¬>Ae;Ö¬>Oe;Ü¬>Ue;Ä¦>AE;Ö¦>OE;Ü¦>UE;" +
+                "aue>aue;AUE>AUE;Aue>Aue;eue>eue;EUE>EUE;Eue>Eue;" +
+                "söben>soeben;zürst>zuerst;Söben>Soeben;" +
+                "Zürst>Zuerst;SÖBEN>SOEBEN;ZÜRST>ZUERST;" +
+                "Getue>Getue;GETUE>GETUE;" +
+                "Getuet>Getüt;GETUET>GETÜT;");
         }
     }
 }
