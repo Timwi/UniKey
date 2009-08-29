@@ -197,7 +197,8 @@ namespace UniKey
                 "köx>koex;KÖX>KOEX;Köx>Koex;" +
                 "pöt>poet;PÖT>POET;Pöt>Poet;" +
                 "Pösie>Poesie;PÖSIE>POESIE;" +
-                "kongrue>kongrue;KONGRUE>KONGRUE;Kongrue>Kongrue;");
+                "kongrue>kongrue;KONGRUE>KONGRUE;Kongrue>Kongrue;" +
+                "äro>aero;ÄRO>AERO;Äro>Aero;");
         }
     }
 }
