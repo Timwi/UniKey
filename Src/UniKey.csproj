@@ -68,8 +68,7 @@
     <Compile Include="SearchForm.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="UniversalMode.cs">
-    </Compile>
+    <Compile Include="UniversalMode.cs"></Compile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\RT.Util\Src\RT.Util.csproj">
