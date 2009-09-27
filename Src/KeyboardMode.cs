@@ -191,14 +191,16 @@ namespace UniKey
                 "zürst>zuerst;ZÜRST>ZUERST;Zürst>Zuerst;" +
                 "Getue>Getue;GETUE>GETUE;" +
                 "Getuet>Getüt;GETUET>GETÜT;" +
-                "Statue>Statue;STATUE>STATUE;" +
+                "statue>statue;Statue>Statue;STATUE>STATUE;" +
                 "que>que;QUE>QUE;Que>Que;" +
                 "sexue>sexue;SEXUE>SEXUE;Sexue>Sexue;" +
                 "köx>koex;KÖX>KOEX;Köx>Koex;" +
                 "pöt>poet;PÖT>POET;Pöt>Poet;" +
-                "Pösie>Poesie;PÖSIE>POESIE;" +
+                "pösie>poesie;Pösie>Poesie;PÖSIE>POESIE;" +
                 "kongrue>kongrue;KONGRUE>KONGRUE;Kongrue>Kongrue;" +
-                "äro>aero;ÄRO>AERO;Äro>Aero;");
+                "äro>aero;ÄRO>AERO;Äro>Aero;" +
+                "düll>duell;DÜL>DUELL;Düll>Duell;" +
+                "dütt>duett;DÜL>DUEtt;Dütt>Duett;");
         }
     }
 }
