@@ -200,7 +200,10 @@ namespace UniKey
                 "kongrue>kongrue;KONGRUE>KONGRUE;Kongrue>Kongrue;" +
                 "äro>aero;ÄRO>AERO;Äro>Aero;" +
                 "düll>duell;DÜL>DUELL;Düll>Duell;" +
-                "dütt>duett;DÜL>DUEtt;Dütt>Duett;");
+                "dütt>duett;DÜL>DUEtt;Dütt>Duett;" +
+                "aktue>aktue;AKTUE>AKTUE;Aktue>Aktue;" +
+                "eventue>eventue;EVENTUE>EVENTUE;Eventue>Eventue;" +
+                "äue>äue;ÄUE>ÄUE;Äue>Äue;");
         }
     }
 }
