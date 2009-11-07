@@ -94,7 +94,7 @@ namespace UniKey
                     LastBufferCheck++;
                     if (Buffer.Substring(0, LastBufferCheck).EndsWith("[exit]"))
                     {
-                        Ut.SendKeystrokes(((object) Keys.Back).Repeat(6));
+                        Ut.SendKeystrokes(Enumerable.Repeat<object>(Keys.Back, 6));
                         Application.Exit();
                         return ProcessKeyAction.ProcessedButEmit;
                     }
