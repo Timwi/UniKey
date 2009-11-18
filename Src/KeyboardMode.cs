@@ -187,8 +187,12 @@ namespace UniKey
             parse("ae>ä;oe>ö;ue>ü;AE>Ä;OE>Ö;UE>Ü;Ae>Ä;Oe>Ö;Ue>Ü;" +
                 "ä¬>ae;ö¬>oe;ü¬>ue;Ä¬>Ae;Ö¬>Oe;Ü¬>Ue;Ä¦>AE;Ö¦>OE;Ü¦>UE;" +
                 "aue>aue;AUE>AUE;Aue>Aue;eue>eue;EUE>EUE;Eue>Eue;" +
+                "äue>äue;ÄUE>ÄUE;Äue>Äue;" +
                 "söben>soeben;SÖBEN>SOEBEN;Söben>Soeben;" +
                 "zürst>zuerst;ZÜRST>ZUERST;Zürst>Zuerst;" +
+                "michäl>michael;Michäl>Michael;MICHÄL>MICHAEL;" +
+                "raffäl>raffael;Raffäl>Raffael;RAFFÄL>RAFFAEL;" +
+                "raphäl>raphael;Raphäl>Raphael;RAPHÄL>RAPHAEL;" +
                 "Getue>Getue;GETUE>GETUE;" +
                 "Getuet>Getüt;GETUET>GETÜT;" +
                 "statue>statue;Statue>Statue;STATUE>STATUE;" +
@@ -202,8 +206,7 @@ namespace UniKey
                 "düll>duell;DÜL>DUELL;Düll>Duell;" +
                 "dütt>duett;DÜL>DUEtt;Dütt>Duett;" +
                 "aktue>aktue;AKTUE>AKTUE;Aktue>Aktue;" +
-                "eventue>eventue;EVENTUE>EVENTUE;Eventue>Eventue;" +
-                "äue>äue;ÄUE>ÄUE;Äue>Äue;");
+                "eventue>eventue;EVENTUE>EVENTUE;Eventue>Eventue;");
         }
     }
 }
