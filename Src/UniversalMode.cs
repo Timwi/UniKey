@@ -92,6 +92,8 @@ namespace UniKey
             SearchformVisible = false;
         }
 
+        public override bool EnableUndo() { return true; }
+
         private void measureItem(object sender, MeasureItemEventArgs e)
         {
             e.ItemHeight = (int) e.Graphics.MeasureString("Wg", bigFont).Height + 5;
@@ -239,7 +241,7 @@ namespace UniKey
                 new Point(rect.Left - Searchform.Width - 2, rect.Bottom - Searchform.Height),
             };
             Point position;
-            var workingArea=Screen.GetWorkingArea(Searchform);
+            var workingArea = Screen.GetWorkingArea(Searchform);
             try { position = candidates.First(p => p.X > workingArea.Left && p.X + Searchform.Width < workingArea.Right && p.Y > workingArea.Top && p.Y + Searchform.Height < workingArea.Bottom); }
             catch (InvalidOperationException) { position = new Point(workingArea.Right - Searchform.Width, workingArea.Bottom - Searchform.Height); }
             WinAPI.SetWindowPos(Searchform.Handle, (IntPtr) WinAPI.HWND_TOPMOST, position.X, position.Y, 0, 0, flags);

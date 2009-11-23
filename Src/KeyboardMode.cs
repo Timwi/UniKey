@@ -34,11 +34,13 @@ namespace UniKey
 
     internal class KeyboardMode
     {
-        protected string Buffer = string.Empty;
-        protected int LastBufferCheck = 0;
         private const bool DebugLog = false;
 
-        // Maps from result to shortcut.
+        protected string Buffer = string.Empty;
+        protected int LastBufferCheck = 0;
+        protected string UndoBufferFrom = null;
+        protected string UndoBufferTo = null;
+
         protected List<Shortcut> Shortcuts = null;
 
         public virtual ReplaceResult GetReplace(string buffer)
@@ -64,6 +66,7 @@ namespace UniKey
         }
 
         public virtual void Activate() { Buffer = string.Empty; }
+        public virtual bool EnableUndo() { return false; }
 
         public virtual ProcessKeyAction ProcessKeyUp(Keys key, bool doReplacements)
         {
@@ -104,6 +107,7 @@ namespace UniKey
                         {
                             Buffer = Buffer.Substring(0, LastBufferCheck - kvp.Key.Length - 2) + Buffer.Substring(LastBufferCheck);
                             LastBufferCheck -= kvp.Key.Length + 2;
+                            UndoBufferFrom = null;
                             Program.Mode = Program.Modes[kvp.Key];
                         }
                     }
@@ -111,8 +115,20 @@ namespace UniKey
                     var replace = Program.Mode.GetReplace(Buffer.Substring(0, LastBufferCheck));
                     if (replace != null)
                     {
+                        UndoBufferFrom = replace.ReplaceWith + Buffer.Substring(LastBufferCheck);
+                        UndoBufferTo = Buffer.Substring(LastBufferCheck - replace.ReplaceLength, replace.ReplaceLength) + Buffer.Substring(LastBufferCheck);
                         Buffer = Buffer.Substring(0, LastBufferCheck - replace.ReplaceLength) + replace.ReplaceWith + Buffer.Substring(LastBufferCheck);
                         LastBufferCheck += replace.ReplaceWith.Length - replace.ReplaceLength;
+                    }
+                    else if (EnableUndo() && UndoBufferFrom != null && LastBufferCheck == Buffer.Length && Buffer[LastBufferCheck - 1] == '\\')
+                    {
+                        UndoBufferFrom = UndoBufferFrom.Substring(0, UndoBufferFrom.Length - 1);
+                        UndoBufferTo = UndoBufferTo.Substring(0, UndoBufferTo.Length - 1);
+                        Buffer = Buffer.Substring(0, Buffer.Length - UndoBufferFrom.Length - 1) + UndoBufferTo;
+                        var t = UndoBufferTo;
+                        UndoBufferTo = UndoBufferFrom;
+                        UndoBufferFrom = t;
+                        LastBufferCheck = Buffer.Length;
                     }
                 }
 
@@ -145,10 +161,23 @@ namespace UniKey
                 Program.Pressed.Add(key);
 
             if (key == Keys.LControlKey || key == Keys.RControlKey || key == Keys.Escape || key == Keys.Enter || key == Keys.Return || key == Keys.Tab)
+            {
                 Buffer = string.Empty;
+                UndoBufferFrom = null;
+            }
             else if (key == Keys.Back && Buffer.Length > 0)
             {
                 Buffer = Buffer.Substring(0, Buffer.Length - 1);
+                if (UndoBufferFrom != null)
+                {
+                    if (UndoBufferFrom.Length == 1 || UndoBufferTo.Length == 1)
+                        UndoBufferFrom = null;
+                    else
+                    {
+                        UndoBufferFrom = UndoBufferFrom.Substring(0, UndoBufferFrom.Length - 1);
+                        UndoBufferTo = UndoBufferTo.Substring(0, UndoBufferTo.Length - 1);
+                    }
+                }
                 if (LastBufferCheck > 0) LastBufferCheck--;
             }
 
@@ -158,10 +187,20 @@ namespace UniKey
 
             if (!alt && !ctrl)
             {
+                char? ch = null;
                 if (shift && KeyToChar.Shift.ContainsKey(key))
-                    Buffer += KeyToChar.Shift[key];
+                    ch = KeyToChar.Shift[key];
                 else if (!shift && KeyToChar.NoShift.ContainsKey(key))
-                    Buffer += KeyToChar.NoShift[key];
+                    ch = KeyToChar.NoShift[key];
+                if (ch != null)
+                {
+                    Buffer += ch.Value;
+                    if (UndoBufferFrom != null)
+                    {
+                        UndoBufferFrom += ch.Value;
+                        UndoBufferTo += ch.Value;
+                    }
+                }
             }
 
             return ProcessKeyAction.Continue;
@@ -177,6 +216,8 @@ namespace UniKey
                 "CX>Ĉ;GX>Ĝ;HX>Ĥ;JX>Ĵ;SX>Ŝ;UX>Ŭ;" +
                 "Cx>Ĉ;Gx>Ĝ;Hx>Ĥ;Jx>Ĵ;Sx>Ŝ;Ux>Ŭ");
         }
+
+        public override bool EnableUndo() { return true; }
     }
 
     internal class DeMode : KeyboardMode
@@ -185,7 +226,6 @@ namespace UniKey
             : base()
         {
             parse("ae>ä;oe>ö;ue>ü;AE>Ä;OE>Ö;UE>Ü;Ae>Ä;Oe>Ö;Ue>Ü;" +
-                "ä¬>ae;ö¬>oe;ü¬>ue;Ä¬>Ae;Ö¬>Oe;Ü¬>Ue;Ä¦>AE;Ö¦>OE;Ü¦>UE;" +
                 "aue>aue;AUE>AUE;Aue>Aue;eue>eue;EUE>EUE;Eue>Eue;" +
                 "äue>äue;ÄUE>ÄUE;Äue>Äue;" +
                 "söben>soeben;SÖBEN>SOEBEN;Söben>Soeben;" +
@@ -193,6 +233,7 @@ namespace UniKey
                 "michäl>michael;Michäl>Michael;MICHÄL>MICHAEL;" +
                 "raffäl>raffael;Raffäl>Raffael;RAFFÄL>RAFFAEL;" +
                 "raphäl>raphael;Raphäl>Raphael;RAPHÄL>RAPHAEL;" +
+                "samül>samuel;Samül>Samuel;SAMÜL>SAMUEL;" +
                 "Getue>Getue;GETUE>GETUE;" +
                 "Getuet>Getüt;GETUET>GETÜT;" +
                 "statue>statue;Statue>Statue;STATUE>STATUE;" +
@@ -203,10 +244,13 @@ namespace UniKey
                 "pösie>poesie;Pösie>Poesie;PÖSIE>POESIE;" +
                 "kongrue>kongrue;KONGRUE>KONGRUE;Kongrue>Kongrue;" +
                 "äro>aero;ÄRO>AERO;Äro>Aero;" +
-                "düll>duell;DÜL>DUELL;Düll>Duell;" +
-                "dütt>duett;DÜL>DUEtt;Dütt>Duett;" +
+                "düll>duell;DÜLL>DUELL;Düll>Duell;" +  // this also takes care of "individuell" coincidentally
+                "dütt>duett;DÜTT>DUETT;Dütt>Duett;" +
                 "aktue>aktue;AKTUE>AKTUE;Aktue>Aktue;" +
-                "eventue>eventue;EVENTUE>EVENTUE;Eventue>Eventue;");
+                "eventue>eventue;EVENTUE>EVENTUE;Eventue>Eventue;" +
+                "manue>manue;MANUE>MANUE;Manue>Manue;");
         }
+
+        public override bool EnableUndo() { return true; }
     }
 }
