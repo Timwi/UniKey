@@ -186,6 +186,21 @@ namespace UniKey
                     .JoinString();
                 return new ReplaceResult(m.Length, candidates);
             }
+            else if ((m = Regex.Match(buffer, @"\{html\}$")).Success)
+            {
+                var input = Clipboard.GetText();
+                return new ReplaceResult(m.Length, input.HtmlEscape());
+            }
+            else if ((m = Regex.Match(buffer, @"\{url\}$")).Success)
+            {
+                var input = Clipboard.GetText();
+                return new ReplaceResult(m.Length, input.UrlEscape());
+            }
+            else if ((m = Regex.Match(buffer, @"\{unurl\}$")).Success)
+            {
+                var input = Clipboard.GetText();
+                return new ReplaceResult(m.Length, input.UrlUnescape());
+            }
             else if ((m = Regex.Match(buffer, @"\{c ([^\{\}]+)\}$")).Success)
             {
                 var input = m.Groups[1].Value;
