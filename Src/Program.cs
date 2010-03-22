@@ -65,7 +65,17 @@ namespace UniKey
         static int LastBufferCheck = 0;
         static string UndoBufferFrom = null;
         static string UndoBufferTo = null;
-        static Dictionary<int, string> UnicodeData = null;
+
+        private static Dictionary<int, string> _unicodeData = null;
+        static Dictionary<int, string> UnicodeData
+        {
+            get
+            {
+                if (_unicodeData == null)
+                    initUnicodeDataCache();
+                return _unicodeData;
+            }
+        }
 
         static void parse(string input, List<Replacer> addTo)
         {
@@ -170,21 +180,39 @@ namespace UniKey
                 save();
                 return new ReplaceResult(m.Length, "added: " + newRepl);
             }
-            else if ((m = Regex.Match(buffer, @"\{find ([^\{\}]+)\}$")).Success && m.Groups[1].Length > 0)
+            else if ((m = Regex.Match(buffer, @"\{find\s+([^\{\}]+?)\s*\}$")).Success && m.Groups[1].Length > 0)
             {
                 var input = m.Groups[1].Value;
                 string[] words = input.Length == 0 ? null : input.Split(' ').Where(s => s.Length > 0).Select(s => s.ToUpperInvariant()).ToArray();
                 if (words == null || words.Length < 1)
                     return new ReplaceResult(m.Length, "No search terms given.");
-                initUnicodeDataCache();
-                var candidates = UnicodeData
+                var candidate = UnicodeData
                     .Where(kvp => words.All(w => kvp.Value.Contains(w)))
                     .Select(kvp => new SearchItem { CodePoint = kvp.Key, Name = kvp.Value, Score = words.Sum(w => Regex.IsMatch(kvp.Value, "\\b" + Regex.Escape(w) + "\\b") ? 20 : 10) - (kvp.Value.Length / 3) })
                     .OrderByDescending(item => item.Score)
-                    .Take(20)
+                    .Take(1).ToArray();
+                if (candidate.Any())
+                    return new ReplaceResult(m.Length, char.ConvertFromUtf32(candidate.First().CodePoint));
+                else
+                    return new ReplaceResult(m.Length, "Character not found.");
+            }
+            else if ((m = Regex.Match(buffer, @"\{find(more|all)\s+([^\{\}]+?)\s*\}$")).Success && m.Groups[2].Length > 0)
+            {
+                bool all = m.Groups[1].Value == "all";
+                var input = m.Groups[2].Value;
+                string[] words = input.Length == 0 ? null : input.Split(' ').Where(s => s.Length > 0).Select(s => s.ToUpperInvariant()).ToArray();
+                if (words == null || words.Length < 1)
+                    return new ReplaceResult(m.Length, "No search terms given.");
+                var candidates = UnicodeData
+                    .Where(kvp => words.All(w => kvp.Value.Contains(w)))
+                    .Select(kvp => new SearchItem { CodePoint = kvp.Key, Name = kvp.Value, Score = words.Sum(w => Regex.IsMatch(kvp.Value, "\\b" + Regex.Escape(w) + "\\b") ? 20 : 10) - (kvp.Value.Length / 3) })
+                    .OrderByDescending(item => item.Score).AsEnumerable();
+                if (!all)
+                    candidates = candidates.Take(20);
+                var candidatesStr = candidates
                     .Select(si => char.ConvertFromUtf32(si.CodePoint) + "    " + si.GetReplacer(Settings.Replacers) + "    0x" + si.CodePoint.ToString("X") + "    " + si.Name + "\n")
                     .JoinString();
-                return new ReplaceResult(m.Length, candidates);
+                return new ReplaceResult(m.Length, candidatesStr);
             }
             else if ((m = Regex.Match(buffer, @"\{html\}$")).Success)
             {
@@ -470,11 +498,9 @@ namespace UniKey
             }
         }
 
-        static void initUnicodeDataCache()
+        private static void initUnicodeDataCache()
         {
-            if (UnicodeData != null)
-                return;
-            UnicodeData = new Dictionary<int, string>();
+            _unicodeData = new Dictionary<int, string>();
             foreach (var line in Resources.UnicodeData.Replace("\r", "").Split('\n'))
             {
                 if (line.Length == 0)
@@ -484,7 +510,7 @@ namespace UniKey
                     continue;
                 if (fields[1].Length == 0 || fields[1][0] == '<')
                     continue;
-                UnicodeData[int.Parse(fields[0], NumberStyles.HexNumber)] = fields[1].ToUpperInvariant();
+                _unicodeData[int.Parse(fields[0], NumberStyles.HexNumber)] = fields[1].ToUpperInvariant();
             }
         }
     }
