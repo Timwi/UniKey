@@ -231,110 +231,13 @@ namespace UniKey
                 return new ReplaceResult(m.Length, input.UrlUnescape());
             }
             else if ((m = Regex.Match(buffer, @"\{c ([^\{\}]+)\}$")).Success)
-            {
-                var input = m.Groups[1].Value;
-                var output = string.Empty;
-                while (input.Length > 0)
-                {
-                    int i = 4;
-                    if (input.StartsWith("shch"))
-                        output += "щ";
-                    else if (input.StartsWith("Shch") || input.StartsWith("SHCH"))
-                        output += "Щ";
-                    else
-                    {
-                        i = 2;
-                        if (input.StartsWith("yo"))
-                            output += "ё";
-                        else if (input.StartsWith("zh"))
-                            output += "ж";
-                        else if (input.StartsWith("ch"))
-                            output += "ч";
-                        else if (input.StartsWith("sh"))
-                            output += "ш";
-                        else if (input.StartsWith("eh"))
-                            output += "э";
-                        else if (input.StartsWith("yu"))
-                            output += "ю";
-                        else if (input.StartsWith("ya"))
-                            output += "я";
-                        else if (input.StartsWith("Yo") || input.StartsWith("YO"))
-                            output += "Ё";
-                        else if (input.StartsWith("Zh") || input.StartsWith("ZH"))
-                            output += "Ж";
-                        else if (input.StartsWith("Ch") || input.StartsWith("CH"))
-                            output += "Ч";
-                        else if (input.StartsWith("Sh") || input.StartsWith("SH"))
-                            output += "Ш";
-                        else if (input.StartsWith("Eh") || input.StartsWith("EH"))
-                            output += "Э";
-                        else if (input.StartsWith("Yu") || input.StartsWith("YU"))
-                            output += "Ю";
-                        else if (input.StartsWith("Ya") || input.StartsWith("YA"))
-                            output += "Я";
-                        else
-                        {
-                            i = 1;
-                            switch (input[0])
-                            {
-                                case 'a': output += "а"; break;
-                                case 'b': output += "б"; break;
-                                case 'v': output += "в"; break;
-                                case 'g': output += "г"; break;
-                                case 'd': output += "д"; break;
-                                case 'e': output += "е"; break;
-                                case 'z': output += "з"; break;
-                                case 'i': output += "и"; break;
-                                case 'j': output += "й"; break;
-                                case 'k': output += "к"; break;
-                                case 'l': output += "л"; break;
-                                case 'm': output += "м"; break;
-                                case 'n': output += "н"; break;
-                                case 'o': output += "о"; break;
-                                case 'p': output += "п"; break;
-                                case 'r': output += "р"; break;
-                                case 's': output += "с"; break;
-                                case 't': output += "т"; break;
-                                case 'u': output += "у"; break;
-                                case 'f': output += "ф"; break;
-                                case 'x': output += "х"; break;
-                                case 'c': output += "ц"; break;
-                                case '`': output += "ъ"; break;
-                                case 'y': output += "ы"; break;
-                                case '\'': output += "ь"; break;
-                                case 'A': output += "А"; break;
-                                case 'B': output += "Б"; break;
-                                case 'V': output += "В"; break;
-                                case 'G': output += "Г"; break;
-                                case 'D': output += "Д"; break;
-                                case 'E': output += "Е"; break;
-                                case 'Z': output += "З"; break;
-                                case 'I': output += "И"; break;
-                                case 'J': output += "Й"; break;
-                                case 'K': output += "К"; break;
-                                case 'L': output += "Л"; break;
-                                case 'M': output += "М"; break;
-                                case 'N': output += "Н"; break;
-                                case 'O': output += "О"; break;
-                                case 'P': output += "П"; break;
-                                case 'R': output += "Р"; break;
-                                case 'S': output += "С"; break;
-                                case 'T': output += "Т"; break;
-                                case 'U': output += "У"; break;
-                                case 'F': output += "Ф"; break;
-                                case 'X': output += "Х"; break;
-                                case 'C': output += "Ц"; break;
-                                case '~': output += "Ъ"; break;
-                                case 'Y': output += "Ы"; break;
-                                case '"': output += "Ь"; break;
-                                default: output += input[0]; break;
-                            }
-                        }
-                    }
-                    input = input.Substring(i);
-                }
-                return new ReplaceResult(m.Length, output);
-            }
+                return new ReplaceResult(m.Length, Conversions.Convert(Conversions.Cyrillic, m.Groups[1].Value));
+            else if ((m = Regex.Match(buffer, @"\{el ([^\{\}]+)\}$")).Success)
+                return new ReplaceResult(m.Length, Conversions.Convert(Conversions.Greek, m.Groups[1].Value));
+            else if ((m = Regex.Match(buffer, @"\{hi ([^\{\}]+)\}$")).Success)
+                return new ReplaceResult(m.Length, Conversions.Convert(Conversions.Hiragana, m.Groups[1].Value));
+            else if ((m = Regex.Match(buffer, @"\{ka ([^\{\}]+)\}$")).Success)
+                return new ReplaceResult(m.Length, Conversions.Convert(Conversions.Katakana, m.Groups[1].Value));
 
             foreach (var repl in Settings.Replacers.OrderByDescending(kvp => kvp.Input.Length))
                 if (buffer.EndsWith(repl.Input, StringComparison.Ordinal))
