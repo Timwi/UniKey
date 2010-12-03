@@ -27,7 +27,8 @@ namespace UniKey
         public static ScriptInfo Greek = new ScriptInfo
         {
             Letters = @"
-                a→α, 'a→ά, b→β, g→γ, d→δ, e→ε, 'e→έ, z→ζ, eh→η, 'eh→ή, th→θ, i→ι, 'i→ί, k→κ, l→λ, m→μ, n→ν, x→ξ, o→ο, 'o→ό, p→π, r→ρ, s→σ, '→ς, t→τ, u→υ, 'u→ύ, ph→φ, kh|ch→χ, ps→ψ, oh→ω, 'oh→ώ                A→Α, 'A→Ά, B→Β, G→Γ, D→Δ, E→Ε, 'E→Έ, Z→Ζ, EH|Eh→Η, 'Eh|'EH→Ή, TH|Th→Θ, I→Ι, 'I→Ί, K→Κ, L→Λ, M→Μ, N→Ν, X→Ξ, O→Ο, 'O→Ό, P→Π, R→Ρ, S→Σ, T→Τ, U→Υ, 'U→Ύ, PH|Ph→Φ, KH|CH|Kh|Ch→Χ, PS|Ps→Ψ, OH|Oh→Ω, 'Oh|'OH→Ώ
+                a→α, 'a→ά, b→β, g→γ, d→δ, e→ε, 'e→έ, z→ζ, eh→η, 'eh→ή, th→θ, i→ι, 'i→ί, k→κ, l→λ, m→μ, n→ν, x→ξ, o→ο, 'o→ό, p→π, r→ρ, s→σ, '→ς, t→τ, u→υ, 'u→ύ, ph→φ, kh|ch→χ, ps→ψ, oh→ω, 'oh→ώ
+                A→Α, 'A→Ά, B→Β, G→Γ, D→Δ, E→Ε, 'E→Έ, Z→Ζ, EH|Eh→Η, 'Eh|'EH→Ή, TH|Th→Θ, I→Ι, 'I→Ί, K→Κ, L→Λ, M→Μ, N→Ν, X→Ξ, O→Ο, 'O→Ό, P→Π, R→Ρ, S→Σ, T→Τ, U→Υ, 'U→Ύ, PH|Ph→Φ, KH|CH|Kh|Ch→Χ, PS|Ps→Ψ, OH|Oh→Ω, 'Oh|'OH→Ώ
             ",
             CaseSensitive = true
         };
