@@ -1,0 +1,34 @@
+<!-- Main.BuildScriptKind.ZYXWVUTSRQPONMLKJIHGFEDCBA -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"
+         DefaultTargets="Build" ToolsVersion="4.0">
+  <Import Project="..\common\Build\CommonImports.proj"/>
+  <PropertyGroup>
+    <ProjectName>UniKey</ProjectName>
+    <BuildsPath Condition="'$(BuildsPath)'==''">..\..\builds</BuildsPath>
+  </PropertyGroup>
+
+
+  <Target Name="Version">
+    <AssemblyVersion AssemblyFile="Properties\AssemblyInfo.cs" VersionTemplate="?.?.$(BuildId).$(ChangeId)">
+      <Output TaskParameter="Version" PropertyName="Version"/>
+    </AssemblyVersion>
+  </Target>
+
+
+  <Target Name="Build" DependsOnTargets="BuildDebug;BuildRelease">
+  </Target>
+
+
+  <Target Name="BuildDebug" DependsOnTargets="Version">
+    <MSBuild Projects="Build$(ProjectName)Single.proj"
+             Properties="Configuration=Debug;ProjectName=$(ProjectName);BuildsPath=$(BuildsPath);Version=$(Version)"/>
+  </Target>
+
+
+  <Target Name="BuildRelease" DependsOnTargets="Version">
+    <MSBuild Projects="Build$(ProjectName)Single.proj"
+             Properties="Configuration=Release;ProjectName=$(ProjectName);BuildsPath=$(BuildsPath);Version=$(Version)"/>
+  </Target>
+
+
+</Project>

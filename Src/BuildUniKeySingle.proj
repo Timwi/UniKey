@@ -1,0 +1,62 @@
+<!-- Single.BuildScriptKind.ZYXWVUTSRQPONMLKJIHGFEDCB -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"
+         DefaultTargets="Obfuscate"
+         ToolsVersion="4.0">
+  <Import Project="..\common\Build\CommonImports.proj"/>
+  <PropertyGroup>
+    <Configuration Condition="'$(Configuration)'==''">Release</Configuration>
+    <Platform Condition="'$(Platform)'==''">Any CPU</Platform>
+  </PropertyGroup>
+
+
+  <Target Name="Init">
+    <PropertyGroup>
+      <PlatformDir Condition="'$(Platform)'=='Any CPU'">AnyCPU</PlatformDir> <!-- "Any CPU" is special - it gets turned into "AnyCPU" by MSBuild at some point, including the default directories used when compiling from Visual Studio. -->
+      <PlatformDir Condition="'$(Platform)'!='Any CPU'">$(Platform)</PlatformDir>
+      <OutputPathTemp>$(BuildsPath)\~Temp\$(ProjectName)\$(Configuration)-$(PlatformDir)-Temp</OutputPathTemp>
+      <OutputPathRaw>$(BuildsPath)\$(ProjectName)\$(Configuration)-$(PlatformDir)-Raw</OutputPathRaw>
+      <OutputPathMerged>$(BuildsPath)\$(ProjectName)\$(Configuration)-$(PlatformDir)-Merged</OutputPathMerged>
+      <OutputPathObfuscated>$(BuildsPath)\$(ProjectName)\$(Configuration)-$(PlatformDir)-Obfuscated</OutputPathObfuscated>
+    </PropertyGroup>
+    <ConvertToAbsolutePath Paths="$(OutputPathTemp)"><Output TaskParameter="AbsolutePaths" PropertyName="OutputPathTemp"/></ConvertToAbsolutePath>
+    <ConvertToAbsolutePath Paths="$(OutputPathRaw)"><Output TaskParameter="AbsolutePaths" PropertyName="OutputPathRaw"/></ConvertToAbsolutePath>
+    <ConvertToAbsolutePath Paths="$(OutputPathMerged)"><Output TaskParameter="AbsolutePaths" PropertyName="OutputPathMerged"/></ConvertToAbsolutePath>
+    <ConvertToAbsolutePath Paths="$(OutputPathObfuscated)"><Output TaskParameter="AbsolutePaths" PropertyName="OutputPathObfuscated"/></ConvertToAbsolutePath>
+    <Message Text='Output paths:'/>
+    <Message Text='  temp: $(OutputPathTemp)'/>
+    <Message Text='  raw: $(OutputPathRaw)'/>
+    <Message Text='  merged: $(OutputPathMerged)'/>
+    <Message Text='  obfuscated: $(OutputPathObfuscated)'/>
+  </Target>
+
+
+  <Target Name="Build" DependsOnTargets="Init">
+    <MSBuild Projects="$(ProjectName).sln" Targets="Rebuild"
+             Properties="Configuration=$(Configuration);Platform=$(Platform);OutputPath=$(OutputPathRaw)\;IntermediateOutputPath=$(OutputPathTemp)\;BaseIntermediateOutputPath=$(OutputPathTemp)\"/>
+  </Target>
+
+
+  <Target Name="Merge" DependsOnTargets="Build">
+    <ItemGroup>
+      <MergeFilesAndEtc Include="$(OutputPathRaw)\UniKey.*"/>
+      <MergeFilesAndEtc Include="$(OutputPathRaw)\RT.Util.*"/>
+    </ItemGroup>
+
+    <RegexMatch Input="@(MergeFilesAndEtc)" Expression="(\.exe$)|(\.dll$)">
+      <Output TaskParameter="Output" ItemName="MergeFiles"/>
+    </RegexMatch>
+    <ItemGroup>
+      <UnmergedFiles Include="$(OutputPathRaw)\**" Exclude="@(MergeFilesAndEtc)"/>
+    </ItemGroup>
+    <Copy SourceFiles="@(UnmergedFiles)" DestinationFolder="$(OutputPathMerged)\%(RecursiveDir)"/>
+    <MakeDir Directories="$(OutputPathMerged)"/>
+    <Exec Command='$(ILMergeNET4) "/out:$(OutputPathMerged)\$(ProjectName).exe" "@(MergeFiles, &apos;" "&apos;)"'/>
+  </Target>
+
+
+  <Target Name="Obfuscate" DependsOnTargets="Merge">
+    <Exec Command='$(Rummage) -a "$(OutputPathMerged)\$(ProjectName).exe" "$(OutputPathObfuscated)\$(ProjectName).exe"'/>
+  </Target>
+
+
+</Project>
