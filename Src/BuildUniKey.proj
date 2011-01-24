@@ -1,34 +1,68 @@
-<!-- Main.BuildScriptKind.ZYXWVUTSRQPONMLKJIHGFEDCBA -->
-<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003"
-         DefaultTargets="Build" ToolsVersion="4.0">
-  <Import Project="..\common\Build\CommonImports.proj"/>
+<!-- Main.BuildScriptKind.ZYXWVUTSRQPONMLKJIHGFEDC -->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0"
+         DefaultTargets="BuildRelease" InitialTargets="Init">
   <PropertyGroup>
+    <Root>..\..</Root>
     <ProjectName>UniKey</ProjectName>
-    <BuildsPath Condition="'$(BuildsPath)'==''">..\..\builds</BuildsPath>
+    <Platform>Any CPU</Platform>
+    <SolutionFile>$(ProjectName).sln</SolutionFile>
+    <CompiledFileName>$(ProjectName)</CompiledFileName>
+    <VersionedTargets>BuildDebug;BuildRelease;BuildAll</VersionedTargets>
+    <AssemblyVersionFile>Properties\AssemblyInfo.cs</AssemblyVersionFile>
   </PropertyGroup>
+  <Import Project="$(Root)\main\common\Build\CommonImports.proj"/>
 
 
-  <Target Name="Version">
-    <AssemblyVersion AssemblyFile="Properties\AssemblyInfo.cs" VersionTemplate="?.?.$(BuildId).$(ChangeId)">
-      <Output TaskParameter="Version" PropertyName="Version"/>
-    </AssemblyVersion>
+  <Target Name="Init">
+    <ConvertToAbsolutePath Paths="$(Root)"><Output TaskParameter="AbsolutePaths" PropertyName="Root"/></ConvertToAbsolutePath>
+    <ConvertToAbsolutePath Paths="$(SolutionFile)"><Output TaskParameter="AbsolutePaths" PropertyName="SolutionFile"/></ConvertToAbsolutePath>
+    <Message Text='Root: $(Root)'/>
   </Target>
 
 
-  <Target Name="Build" DependsOnTargets="BuildDebug;BuildRelease">
+  <Target Name="SetVersion" BeforeTargets="$(VersionedTargets)">
+    <AssemblyVersion AssemblyFile="$(AssemblyVersionFile)" VersionTemplate="?.?.?.?"><Output TaskParameter="Version" PropertyName="WasVersion"/></AssemblyVersion>
+    <AssemblyVersion AssemblyFile="$(AssemblyVersionFile)" VersionTemplate="?.?.$(BuildId).$(ChangeId)"/>
+  </Target>
+  <Target Name="RestoreVersion" AfterTargets="$(VersionedTargets)">
+    <AssemblyVersion AssemblyFile="$(AssemblyVersionFile)" VersionTemplate="$(WasVersion)"/>
   </Target>
 
 
-  <Target Name="BuildDebug" DependsOnTargets="Version">
-    <MSBuild Projects="Build$(ProjectName)Single.proj"
-             Properties="Configuration=Debug;ProjectName=$(ProjectName);BuildsPath=$(BuildsPath);Version=$(Version)"/>
+  <Target Name="GetMergeFilesAndCompanions" Returns="@(MergeFilesAndCompanions)">
+    <ItemGroup>
+      <MergeFilesAndCompanions Include="$(OutputPath)\$(ProjectName).*"/>
+      <MergeFilesAndCompanions Include="$(OutputPath)\RT.Util.*"/>
+    </ItemGroup>
   </Target>
 
 
-  <Target Name="BuildRelease" DependsOnTargets="Version">
-    <MSBuild Projects="Build$(ProjectName)Single.proj"
-             Properties="Configuration=Release;ProjectName=$(ProjectName);BuildsPath=$(BuildsPath);Version=$(Version)"/>
+  <Target Name="BuildRelease">
+    <MSBuild Projects="$(BuildSingleProj)" Targets="Build;Merge"
+             Properties="Configuration=Release;Platform=$(Platform);CompiledFileName=$(CompiledFileName);ProjectName=$(ProjectName);SolutionFile=$(SolutionFile);Root=$(Root);Caller=$(MSBuildProjectFullPath)"/>
+  </Target>
+  <Target Name="ObfuscateRelease">
+    <MSBuild Projects="$(BuildSingleProj)" Targets="Obfuscate"
+             Properties="Configuration=Release;Platform=$(Platform);CompiledFileName=$(CompiledFileName);ProjectName=$(ProjectName);SolutionFile=$(SolutionFile);Root=$(Root);Caller=$(MSBuildProjectFullPath)"/>
+  </Target>
+  <Target Name="BuildDebug">
+    <MSBuild Projects="$(BuildSingleProj)" Targets="Build;Merge"
+             Properties="Configuration=Debug;Platform=$(Platform);CompiledFileName=$(CompiledFileName);ProjectName=$(ProjectName);SolutionFile=$(SolutionFile);Root=$(Root);Caller=$(MSBuildProjectFullPath)"/>
+  </Target>
+  <Target Name="ObfuscateDebug">
+    <MSBuild Projects="$(BuildSingleProj)" Targets="Obfuscate"
+             Properties="Configuration=Debug;Platform=$(Platform);CompiledFileName=$(CompiledFileName);ProjectName=$(ProjectName);SolutionFile=$(SolutionFile);Root=$(Root);Caller=$(MSBuildProjectFullPath)"/>
   </Target>
 
+  <Target Name="BuildAll" DependsOnTargets="BuildDebug;BuildRelease"/>
+  <Target Name="ObfuscateAll" DependsOnTargets="ObfuscateDebug;ObfuscateRelease"/>
+
+  <!-- Target aliases -->
+  <Target Name="BD" DependsOnTargets="BuildDebug"/>
+  <Target Name="BR" DependsOnTargets="BuildRelease"/>
+  <Target Name="BA" DependsOnTargets="BuildAll"/>
+  <Target Name="OD" DependsOnTargets="ObfuscateDebug"/>
+  <Target Name="OR" DependsOnTargets="ObfuscateRelease"/>
+  <Target Name="OA" DependsOnTargets="ObfuscateAll"/>
 
 </Project>
