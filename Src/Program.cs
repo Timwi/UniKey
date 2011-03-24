@@ -155,6 +155,8 @@ namespace UniKey
         static ReplaceResult GetReplace(string buffer)
         {
             Match m;
+            int i;
+
             if ((m = Regex.Match(buffer, @"\{del(c?) ([^\{\}]+)\}$")).Success)
             {
                 var input = (m.Groups[1].Length > 0 ? "{{{0}}}" : "{0}").Fmt(m.Groups[2].Value);
@@ -230,6 +232,8 @@ namespace UniKey
                 var input = Clipboard.GetText();
                 return new ReplaceResult(m.Length, input.UrlUnescape());
             }
+            else if ((m = Regex.Match(buffer, @"\{u ([0-9a-f]+)\}$")).Success && int.TryParse(m.Groups[1].Value, NumberStyles.HexNumber, null, out i))
+                return new ReplaceResult(m.Length, char.ConvertFromUtf32(i));
             else if ((m = Regex.Match(buffer, @"\{c ([^\{\}]+)\}$")).Success)
                 return new ReplaceResult(m.Length, Conversions.Convert(Conversions.Cyrillic, m.Groups[1].Value));
             else if ((m = Regex.Match(buffer, @"\{el ([^\{\}]+)\}$")).Success)
