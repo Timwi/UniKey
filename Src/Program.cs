@@ -49,7 +49,11 @@ namespace UniKey
         public string GetReplacer(List<Replacer> replacers)
         {
             string str = char.ConvertFromUtf32(CodePoint);
-            return replacers.Where(s => s.ReplaceWith == str).Select(s => s.Input).FirstOrDefault();
+            return replacers.Where(s => s.ReplaceWith == str).Select(s => s.Input).JoinString("; ");
+        }
+        public override string ToString()
+        {
+            return "({0}) U+{1:X4} {2}".Fmt(Score, CodePoint, Name);
         }
     }
 
@@ -188,13 +192,9 @@ namespace UniKey
                 string[] words = input.Length == 0 ? null : input.Split(' ').Where(s => s.Length > 0).Select(s => s.ToUpperInvariant()).ToArray();
                 if (words == null || words.Length < 1)
                     return new ReplaceResult(m.Length, "No search terms given.");
-                var candidate = UnicodeData
-                    .Where(kvp => words.All(w => kvp.Value.Contains(w)))
-                    .Select(kvp => new SearchItem { CodePoint = kvp.Key, Name = kvp.Value, Score = words.Sum(w => Regex.IsMatch(kvp.Value, "\\b" + Regex.Escape(w) + "\\b") ? 20 : 10) - (kvp.Value.Length / 3) })
-                    .OrderByDescending(item => item.Score)
-                    .Take(1).ToArray();
-                if (candidate.Any())
-                    return new ReplaceResult(m.Length, char.ConvertFromUtf32(candidate.First().CodePoint));
+                var candidate = FindCharacters(words).MaxElementOrDefault(item => item.Score);
+                if (candidate != null)
+                    return new ReplaceResult(m.Length, char.ConvertFromUtf32(candidate.CodePoint));
                 else
                     return new ReplaceResult(m.Length, "Character not found.");
             }
@@ -204,17 +204,13 @@ namespace UniKey
                 string[] words = input.Length == 0 ? null : input.Split(' ').Where(s => s.Length > 0).Select(s => s.ToUpperInvariant()).ToArray();
                 if (words == null || words.Length < 1)
                     return new ReplaceResult(m.Length, "No search terms given.");
-                var candidates = UnicodeData
-                    .Where(kvp => words.All(w => kvp.Value.Contains(w)))
-                    .Select(kvp => new SearchItem { CodePoint = kvp.Key, Name = kvp.Value, Score = words.Sum(w => Regex.IsMatch(kvp.Value, "\\b" + Regex.Escape(w) + "\\b") ? 20 : 10) - (kvp.Value.Length / 3) })
-                    .OrderByDescending(item => item.Score).AsEnumerable();
-                var candidatesStr = candidates
+                var candidatesStr = FindCharacters(words)
                     .Select(si => char.ConvertFromUtf32(si.CodePoint) + "    " + si.GetReplacer(Settings.Replacers) + "    0x" + si.CodePoint.ToString("X") + "    " + si.Name + Environment.NewLine)
                     .JoinString();
                 if (candidatesStr.Length > 0)
                     Clipboard.SetText(candidatesStr);
                 else
-                    Clipboard.Clear();
+                    Clipboard.SetText("No character found matching: " + words.JoinString(" "));
                 return new ReplaceResult(m.Length, "");
             }
             else if ((m = Regex.Match(buffer, @"\{html\}$")).Success)
@@ -247,6 +243,20 @@ namespace UniKey
                 if (buffer.EndsWith(repl.Input, StringComparison.Ordinal))
                     return new ReplaceResult(repl.Input.Length, repl.ReplaceWith);
             return null;
+        }
+
+        private static IEnumerable<SearchItem> FindCharacters(string[] words)
+        {
+            var candidates = UnicodeData
+                .Where(kvp => words.All(w => kvp.Value.Contains(w)))
+                .Select(kvp => new SearchItem
+                {
+                    CodePoint = kvp.Key,
+                    Name = kvp.Value,
+                    Score = kvp.Value.Split(' ').Where(s => s.Length > 0).Select(s => s.Trim()).Sum(w => words.Contains(w) ? 20 : words.Any(w2 => w.Contains(w2)) ? 0 : -2)
+                })
+                .OrderByDescending(item => item.Score).AsEnumerable();
+            return candidates;
         }
 
         static bool save()
