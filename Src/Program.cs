@@ -1,15 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Windows.Forms;
+using System.Xml.Linq;
 using RT.Util;
 using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
@@ -18,45 +17,6 @@ using UniKey.Properties;
 
 namespace UniKey
 {
-    internal class ReplaceResult
-    {
-        private int _replaceLength;
-        private string _replaceWith;
-        public ReplaceResult(int replaceLength, string replaceWith)
-        {
-            _replaceLength = replaceLength;
-            _replaceWith = replaceWith;
-        }
-        public int ReplaceLength { get { return _replaceLength; } }
-        public string ReplaceWith { get { return _replaceWith; } }
-    }
-
-    internal class Replacer
-    {
-        public string Input;
-        public string ReplaceWith;
-        public override string ToString()
-        {
-            return Input + " ⇒ " + ReplaceWith;
-        }
-    }
-
-    internal class SearchItem
-    {
-        public int CodePoint;
-        public string Name;
-        public int Score;
-        public string GetReplacer(List<Replacer> replacers)
-        {
-            string str = char.ConvertFromUtf32(CodePoint);
-            return replacers.Where(s => s.ReplaceWith == str).Select(s => s.Input).JoinString("; ");
-        }
-        public override string ToString()
-        {
-            return "({0}) U+{1:X4} {2}".Fmt(Score, CodePoint, Name);
-        }
-    }
-
     static class Program
     {
         const bool DebugLog = false;
@@ -69,6 +29,156 @@ namespace UniKey
         static int LastBufferCheck = 0;
         static string UndoBufferFrom = null;
         static string UndoBufferTo = null;
+        static string Password = null;
+
+        static Control GuiThreadInvoker;
+
+        static CommandInfo[] Commands = Ut.NewArray
+        (
+            new CommandInfo(@"\{exit\}$", "{exit}", "Exits UniKey.",
+                m =>
+                {
+                    GuiThreadInvoker.BeginInvoke(new Action(() => { Application.Exit(); }));
+                    return new ReplaceResult(m.Length, "Exiting.");
+                }),
+
+            new CommandInfo(@"\{del ([^\{\}]+|\{[^\{\}]+\})\}$", "{del <key>}",
+                @"Deletes the specified key from the replacements dictionary. The key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'.",
+                m => del(m.Groups[1].Value, m.Length)),
+
+            new CommandInfo(@"\{add ([^\{\}]+|\{[^\{\}]+\})\}$", "{add <key>}",
+                @"Adds a new entry to the replacements dictionary. The key is specified, the replacement value is taken from the clipboard. The key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'.",
+                m => add(m.Groups[1].Value, m.Length)),
+
+            new CommandInfo(@"\{ren ([^ \{\}]+) ([^ \{\}]+)\}$", "{ren <oldkey> <newkey>}",
+                @"Changes the key for an existing replacement rule. Each key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'.",
+                m => ren(m.Groups[1].Value, m.Groups[2].Value, m.Length)),
+
+            new CommandInfo(@"\{setpassword ([^\{\}]+)\}$", "{setpassword <newpassword>}",
+                @"Encrypts the UniKey data file using the specified password. You will be prompted for the password every time UniKey starts. If you forget the password, you will not be able to retrieve your UniKey data.",
+                m => { Password = m.Groups[1].Value; save(); return new ReplaceResult(m.Length, "done"); }),
+
+            new CommandInfo(@"\{removepassword\}$", "{removepassword}",
+                @"Saves the UniKey data file unencrypted. You will no longer be prompted for a password when UniKey starts.",
+                m => { Password = null; save(); return new ReplaceResult(m.Length, "done"); }),
+
+            new CommandInfo(@"\{help\}$", "{help}", @"Displays this help screen.", m => help(m.Length)),
+
+            new CommandInfo(@"\{find\s+([^\{\}]+?)\s*\}$", @"{find <words>}",
+                @"Searches for a Unicode character using the specified keywords and outputs the best match.",
+                m => find(m.Groups[1].Value, m.Length)),
+
+            new CommandInfo(@"\{findall\s+([^\{\}]+?)\s*\}$", @"{findall <words>}",
+                @"FInds all Unicode characters whose names contain the specified words, and places a tabular list of those characters in the clipboard.",
+                m => findAll(m.Groups[1].Value, m.Length)),
+
+            new CommandInfo(@"\{html\}$", @"{html}", @"HTML-escapes the current contents of the clipboard and outputs the result as keystrokes.",
+                m => new ReplaceResult(m.Length, Clipboard.GetText().HtmlEscape())),
+
+            new CommandInfo(@"\{url\}$", @"{url}", @"URL-escapes the current contents of the clipboard and outputs the result as keystrokes.",
+                m => new ReplaceResult(m.Length, Clipboard.GetText().UrlEscape())),
+
+            new CommandInfo(@"\{unurl\}$", @"{unurl}", @"Reverses URL escaping in the current contents of the clipboard and outputs the result as keystrokes.",
+                m => new ReplaceResult(m.Length, Clipboard.GetText().UrlUnescape())),
+
+            new CommandInfo(@"\{u ([0-9a-f]+)\}$", @"{u <hexadecimal codepoint>}", @"Outputs the specified Unicode character as a keystroke.",
+                m =>
+                {
+                    int i;
+                    return int.TryParse(m.Groups[1].Value, NumberStyles.HexNumber, null, out i)
+                        ? new ReplaceResult(m.Length, char.ConvertFromUtf32(i))
+                        : new ReplaceResult(m.Length, "Invalid codepoint.");
+                }),
+
+            new CommandInfo(@"\{c ([^\{\}]+)\}$", "{c <text>}", @"Converts the specified text to Cyrillic.",
+                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Cyrillic, m.Groups[1].Value))),
+            new CommandInfo(@"\{el ([^\{\}]+)\}$", "{el <text>}", @"Converts the specified text to Greek.",
+                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Greek, m.Groups[1].Value))),
+            new CommandInfo(@"\{hi ([^\{\}]+)\}$", "{hi <text>}", @"Converts the specified text to Hiragana.",
+                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Hiragana, m.Groups[1].Value))),
+            new CommandInfo(@"\{ka ([^\{\}]+)\}$", "{ka <text>}", @"Converts the specified text to Katakana.",
+                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Katakana, m.Groups[1].Value)))
+        );
+
+        private static ReplaceResult del(string key, int length)
+        {
+            if (!Settings.Replacers.ContainsKey(key))
+                return new ReplaceResult(length, "not found");
+            Settings.Replacers.Remove(key);
+            save();
+            return new ReplaceResult(length, "done");
+        }
+
+        private static ReplaceResult add(string key, int length)
+        {
+            var newRepl = Clipboard.GetText();
+            string existing;
+            if (Settings.Replacers.TryGetValue(key, out existing))
+            {
+                Settings.Replacers[key] = newRepl;
+                save();
+                return new ReplaceResult(length, "updated: {0} ⇒ {1}".Fmt(existing, newRepl));
+            }
+            Settings.Replacers[key] = newRepl;
+            save();
+            return new ReplaceResult(length, "added: " + newRepl);
+        }
+
+        private static ReplaceResult ren(string oldInput, string newInput, int length)
+        {
+            if (!Settings.Replacers.ContainsKey(oldInput))
+                return new ReplaceResult(length, "not found");
+            if (Settings.Replacers.ContainsKey(newInput))
+                return new ReplaceResult(length, "failed: new key already exists");
+            var replaceWith = Settings.Replacers[oldInput];
+            Settings.Replacers.Remove(oldInput);
+            Settings.Replacers[newInput] = replaceWith;
+            save();
+            return new ReplaceResult(length, "done");
+        }
+
+        private static ReplaceResult find(string input, int length)
+        {
+            string[] words = input.Length == 0 ? null : input.Split(' ').Where(s => s.Length > 0).Select(s => s.ToUpperInvariant()).ToArray();
+            if (words == null || words.Length < 1)
+                return new ReplaceResult(length, "No search terms given.");
+            var candidate = FindCharacters(words).MaxElementOrDefault(item => item.Score);
+            if (candidate != null)
+                return new ReplaceResult(length, char.ConvertFromUtf32(candidate.CodePoint));
+            else
+                return new ReplaceResult(length, "Character not found.");
+        }
+
+        private static ReplaceResult findAll(string input, int length)
+        {
+            string[] words = input.Length == 0 ? null : input.Split(' ').Where(s => s.Length > 0).Select(s => s.ToUpperInvariant()).ToArray();
+            if (words == null || words.Length < 1)
+                return new ReplaceResult(length, "No search terms given.");
+            var candidatesStr = FindCharacters(words)
+                .Select(si => char.ConvertFromUtf32(si.CodePoint) + "    " + si.GetReplacer(Settings.Replacers) + "    0x" + si.CodePoint.ToString("X") + "    " + si.Name + Environment.NewLine)
+                .JoinString();
+            if (candidatesStr.Length > 0)
+                Clipboard.SetText(candidatesStr);
+            else
+                Clipboard.SetText("No character found matching: " + words.JoinString(" "));
+            return new ReplaceResult(length, "");
+        }
+
+        private static ReplaceResult help(int length)
+        {
+            GuiThreadInvoker.BeginInvoke(new Action(() =>
+            {
+                var str = new StringBuilder();
+                foreach (var info in Commands.OrderBy(cmd => cmd.CommandName))
+                {
+                    str.AppendLine(info.CommandName);
+                    str.AppendLine("    " + info.HelpString);
+                    str.AppendLine();
+                }
+                DlgMessage.Show(str.ToString(), "UniKey Commands", DlgType.Info);
+            }));
+            return new ReplaceResult(length, "");
+        }
 
         private static Dictionary<int, string> _unicodeData = null;
         static Dictionary<int, string> UnicodeData
@@ -81,17 +191,19 @@ namespace UniKey
             }
         }
 
-        static void parse(string input, List<Replacer> addTo)
+        static void parse(string input, Dictionary<string, string> addTo)
         {
             string[] items = input.Replace("\r", "").Replace("\n", "").Split(';');
             foreach (string item in items)
             {
                 int i = item.IndexOf('>');
                 if (i > 0)
-                    addTo.Add(new Replacer { Input = item.Substring(0, i), ReplaceWith = item.Substring(i + 1) });
+                    addTo.Add(item.Substring(0, i), item.Substring(i + 1));
             }
-            addTo.Sort((a, b) => b.Input.Length.CompareTo(a.Input.Length));
         }
+
+        private static byte[] _iv = "A,EW9%9Enp{1!oiN".ToUtf8();
+        private static byte[] _salt = "kdSkeuDkj3%k".ToUtf8();
 
         /// <summary>
         /// The main entry point for the application.
@@ -110,7 +222,34 @@ namespace UniKey
 
             try
             {
-                Settings = XmlClassify.LoadObjectFromXmlFile<Settings>(PathUtil.AppPathCombine(@"UniKey.settings.xml"));
+                bool usePw = true;
+                using (var f = File.Open(PathUtil.AppPathCombine(@"UniKey.settings.xml"), FileMode.Open))
+                {
+                    var start = f.Read(5).FromUtf8();
+                    if (start == "passw")
+                    {
+                        Password = InputBox.GetLine("Enter password:", caption: "Password");
+                        if (Password == null) return;
+                        var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
+                        var key = passwordDeriveBytes.GetBytes(16);
+                        var rij = Rijndael.Create();
+                        var rijDec = rij.CreateDecryptor(key, _iv);
+                        try
+                        {
+                            using (var cStream = new CryptoStream(f, rijDec, CryptoStreamMode.Read))
+                                Settings = XmlClassify.ObjectFromXElement<Settings>(XElement.Parse(cStream.ReadAllBytes().FromUtf8()));
+                        }
+                        catch (Exception e)
+                        {
+                            DlgMessage.Show("Could not decrypt UniKey.settings.xml:\n{0}\nPassword may be wrong. Exiting.".Fmt(e.Message), "Error", DlgType.Error);
+                            return;
+                        }
+                    }
+                    else
+                        usePw = false;
+                }
+                if (!usePw)
+                    Settings = XmlClassify.LoadObjectFromXmlFile<Settings>(PathUtil.AppPathCombine(@"UniKey.settings.xml"));
             }
             catch (Exception e)
             {
@@ -149,6 +288,8 @@ namespace UniKey
                     return;
             }
 
+            GuiThreadInvoker = new Form();
+            var _ = GuiThreadInvoker.Handle;
             KeyboardListener = new GlobalKeyboardListener();
             KeyboardListener.HookAllKeys = true;
             KeyboardListener.KeyDown += new KeyEventHandler(keyDown);
@@ -159,89 +300,14 @@ namespace UniKey
         static ReplaceResult GetReplace(string buffer)
         {
             Match m;
-            int i;
 
-            if ((m = Regex.Match(buffer, @"\{del(c?) ([^\{\}]+)\}$")).Success)
-            {
-                var input = (m.Groups[1].Length > 0 ? "{{{0}}}" : "{0}").Fmt(m.Groups[2].Value);
-                if (!Settings.Replacers.Any(r => r.Input == input))
-                    return new ReplaceResult(m.Length, "not found");
-                Settings.Replacers = Settings.Replacers.Where(r => r.Input != input).ToList();
-                save();
-                return new ReplaceResult(m.Length, "done");
-            }
-            else if ((m = Regex.Match(buffer, @"\{add(c?) ([^\{\}]+)\}$")).Success)
-            {
-                var input = (m.Groups[1].Length > 0 ? "{{{0}}}" : "{0}").Fmt(m.Groups[2].Value);
-                var newRepl = Clipboard.GetText();
-                var existing = Settings.Replacers.FirstOrDefault(r => r.Input == input);
-                if (existing != null)
-                {
-                    var tmp = existing.ReplaceWith;
-                    existing.ReplaceWith = newRepl;
-                    save();
-                    return new ReplaceResult(m.Length, "updated: {0} ⇒ {1}".Fmt(tmp, newRepl));
-                }
-                Settings.Replacers.Add(new Replacer { Input = input, ReplaceWith = newRepl });
-                save();
-                return new ReplaceResult(m.Length, "added: " + newRepl);
-            }
-            else if ((m = Regex.Match(buffer, @"\{find\s+([^\{\}]+?)\s*\}$")).Success && m.Groups[1].Length > 0)
-            {
-                var input = m.Groups[1].Value;
-                string[] words = input.Length == 0 ? null : input.Split(' ').Where(s => s.Length > 0).Select(s => s.ToUpperInvariant()).ToArray();
-                if (words == null || words.Length < 1)
-                    return new ReplaceResult(m.Length, "No search terms given.");
-                var candidate = FindCharacters(words).MaxElementOrDefault(item => item.Score);
-                if (candidate != null)
-                    return new ReplaceResult(m.Length, char.ConvertFromUtf32(candidate.CodePoint));
-                else
-                    return new ReplaceResult(m.Length, "Character not found.");
-            }
-            else if ((m = Regex.Match(buffer, @"\{findall\s+([^\{\}]+?)\s*\}$")).Success && m.Groups[1].Length > 0)
-            {
-                var input = m.Groups[1].Value;
-                string[] words = input.Length == 0 ? null : input.Split(' ').Where(s => s.Length > 0).Select(s => s.ToUpperInvariant()).ToArray();
-                if (words == null || words.Length < 1)
-                    return new ReplaceResult(m.Length, "No search terms given.");
-                var candidatesStr = FindCharacters(words)
-                    .Select(si => char.ConvertFromUtf32(si.CodePoint) + "    " + si.GetReplacer(Settings.Replacers) + "    0x" + si.CodePoint.ToString("X") + "    " + si.Name + Environment.NewLine)
-                    .JoinString();
-                if (candidatesStr.Length > 0)
-                    Clipboard.SetText(candidatesStr);
-                else
-                    Clipboard.SetText("No character found matching: " + words.JoinString(" "));
-                return new ReplaceResult(m.Length, "");
-            }
-            else if ((m = Regex.Match(buffer, @"\{html\}$")).Success)
-            {
-                var input = Clipboard.GetText();
-                return new ReplaceResult(m.Length, input.HtmlEscape());
-            }
-            else if ((m = Regex.Match(buffer, @"\{url\}$")).Success)
-            {
-                var input = Clipboard.GetText();
-                return new ReplaceResult(m.Length, input.UrlEscape());
-            }
-            else if ((m = Regex.Match(buffer, @"\{unurl\}$")).Success)
-            {
-                var input = Clipboard.GetText();
-                return new ReplaceResult(m.Length, input.UrlUnescape());
-            }
-            else if ((m = Regex.Match(buffer, @"\{u ([0-9a-f]+)\}$")).Success && int.TryParse(m.Groups[1].Value, NumberStyles.HexNumber, null, out i))
-                return new ReplaceResult(m.Length, char.ConvertFromUtf32(i));
-            else if ((m = Regex.Match(buffer, @"\{c ([^\{\}]+)\}$")).Success)
-                return new ReplaceResult(m.Length, Conversions.Convert(Conversions.Cyrillic, m.Groups[1].Value));
-            else if ((m = Regex.Match(buffer, @"\{el ([^\{\}]+)\}$")).Success)
-                return new ReplaceResult(m.Length, Conversions.Convert(Conversions.Greek, m.Groups[1].Value));
-            else if ((m = Regex.Match(buffer, @"\{hi ([^\{\}]+)\}$")).Success)
-                return new ReplaceResult(m.Length, Conversions.Convert(Conversions.Hiragana, m.Groups[1].Value));
-            else if ((m = Regex.Match(buffer, @"\{ka ([^\{\}]+)\}$")).Success)
-                return new ReplaceResult(m.Length, Conversions.Convert(Conversions.Katakana, m.Groups[1].Value));
+            foreach (var command in Commands)
+                if ((m = Regex.Match(buffer, command.Regex)).Success)
+                    return command.Function(m);
 
-            foreach (var repl in Settings.Replacers.OrderByDescending(kvp => kvp.Input.Length))
-                if (buffer.EndsWith(repl.Input, StringComparison.Ordinal))
-                    return new ReplaceResult(repl.Input.Length, repl.ReplaceWith);
+            foreach (var repl in Settings.Replacers.Keys.OrderByDescending(key => key.Length))
+                if (buffer.EndsWith(repl, StringComparison.Ordinal))
+                    return new ReplaceResult(repl.Length, Settings.Replacers[repl]);
             return null;
         }
 
@@ -263,7 +329,23 @@ namespace UniKey
         {
             try
             {
-                XmlClassify.SaveObjectToXmlFile(Settings, PathUtil.AppPathCombine("UniKey.settings.xml"));
+                var fileName = PathUtil.AppPathCombine("UniKey.settings.xml");
+                if (Password != null)
+                {
+                    var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
+                    var key = passwordDeriveBytes.GetBytes(16);
+                    var rij = Rijndael.Create();
+
+                    var rijEnc = rij.CreateEncryptor(key, _iv);
+                    using (var outputStream = File.Open(fileName, FileMode.Create))
+                    {
+                        outputStream.Write("passw".ToUtf8());
+                        using (var cStream = new CryptoStream(outputStream, rijEnc, CryptoStreamMode.Write))
+                            cStream.Write(XmlClassify.ObjectToXElement(Settings).ToString().ToUtf8());
+                    }
+                }
+                else
+                    XmlClassify.SaveObjectToXmlFile(Settings, fileName);
             }
             catch (Exception e)
             {
@@ -271,6 +353,80 @@ namespace UniKey
                 return false;
             }
             return true;
+        }
+
+        static byte[] keyboardState = new byte[256];
+        static string getCharsFromKeys(Keys keys, bool shift)
+        {
+            var buf = new StringBuilder(16);
+            keyboardState[(int) Keys.ShiftKey] = (byte) (shift ? 0xff : 0);
+            WinAPI.ToUnicode((uint) keys, 0, keyboardState, buf, 16, 0);
+            return buf.ToString();
+        }
+
+        static void keyDown(object sender, KeyEventArgs e)
+        {
+            if (Processing)
+                return;
+            Processing = true;
+            try
+            {
+                if (DebugLog)
+                {
+                    var buf = Encoding.UTF8.GetBytes("Down: " + e.KeyCode.ToString() + "\r\n");
+                    using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
+                    {
+                        f.Write(buf, 0, buf.Length);
+                        f.Close();
+                    }
+                }
+
+                if (!Pressed.Contains(e.KeyCode))
+                    Pressed.Add(e.KeyCode);
+
+                if (_emptyKeys.Contains(e.KeyCode))
+                {
+                    Buffer = string.Empty;
+                    UndoBufferFrom = null;
+                }
+                else if (e.KeyCode == Keys.Back && Buffer.Length > 0)
+                {
+                    Buffer = Buffer.Substring(0, Buffer.Length - 1);
+                    if (UndoBufferFrom != null)
+                    {
+                        if (UndoBufferFrom.Length == 1 || UndoBufferTo.Length == 1)
+                            UndoBufferFrom = null;
+                        else
+                        {
+                            UndoBufferFrom = UndoBufferFrom.Substring(0, UndoBufferFrom.Length - 1);
+                            UndoBufferTo = UndoBufferTo.Substring(0, UndoBufferTo.Length - 1);
+                        }
+                    }
+                    if (LastBufferCheck > 0) LastBufferCheck--;
+                }
+                else
+                {
+                    bool alt = Pressed.Contains(Keys.LMenu) || Pressed.Contains(Keys.RMenu);
+                    bool ctrl = Pressed.Contains(Keys.LControlKey) || Pressed.Contains(Keys.RControlKey);
+                    bool shift = Pressed.Contains(Keys.LShiftKey) || Pressed.Contains(Keys.RShiftKey);
+
+                    if (!alt && !ctrl)
+                    {
+                        // special-case the secondary backslash key
+                        var str = (e.KeyCode == Keys.Oem5) ? "←" : getCharsFromKeys(e.KeyCode, shift);
+                        Buffer += str;
+                        if (UndoBufferFrom != null)
+                        {
+                            UndoBufferFrom += str;
+                            UndoBufferTo += str;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                Processing = false;
+            }
         }
 
         static void keyUp(object sender, KeyEventArgs e)
@@ -305,12 +461,6 @@ namespace UniKey
                     while (LastBufferCheck < Buffer.Length)
                     {
                         LastBufferCheck++;
-                        if (Buffer.Substring(0, LastBufferCheck).EndsWith("{exit}"))
-                        {
-                            Ut.SendKeystrokes(Enumerable.Repeat<object>(Keys.Back, 6));
-                            Application.Exit();
-                            return;
-                        }
 
                         var replace = GetReplace(Buffer.Substring(0, LastBufferCheck));
                         if (replace != null)
@@ -320,7 +470,7 @@ namespace UniKey
                             Buffer = Buffer.Substring(0, LastBufferCheck - replace.ReplaceLength) + replace.ReplaceWith + Buffer.Substring(LastBufferCheck);
                             LastBufferCheck += replace.ReplaceWith.Length - replace.ReplaceLength;
                         }
-                        else if (UndoBufferFrom != null && LastBufferCheck == Buffer.Length && Buffer[LastBufferCheck - 1] == '\\')
+                        else if (UndoBufferFrom != null && LastBufferCheck == Buffer.Length && Buffer[LastBufferCheck - 1] == '←')
                         {
                             UndoBufferFrom = UndoBufferFrom.Substring(0, UndoBufferFrom.Length - 1);
                             UndoBufferTo = UndoBufferTo.Substring(0, UndoBufferTo.Length - 1);
@@ -347,74 +497,12 @@ namespace UniKey
             }
         }
 
-        static void keyDown(object sender, KeyEventArgs e)
-        {
-            if (Processing)
-                return;
-            Processing = true;
-            try
-            {
-                if (DebugLog)
-                {
-                    var buf = Encoding.UTF8.GetBytes("Down: " + e.KeyCode.ToString() + "\r\n");
-                    using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
-                    {
-                        f.Write(buf, 0, buf.Length);
-                        f.Close();
-                    }
-                }
-
-                if (!Pressed.Contains(e.KeyCode))
-                    Pressed.Add(e.KeyCode);
-
-                if (e.KeyCode == Keys.LControlKey || e.KeyCode == Keys.RControlKey || e.KeyCode == Keys.Escape || e.KeyCode == Keys.Enter || e.KeyCode == Keys.Return || e.KeyCode == Keys.Tab)
-                {
-                    Buffer = string.Empty;
-                    UndoBufferFrom = null;
-                }
-                else if (e.KeyCode == Keys.Back && Buffer.Length > 0)
-                {
-                    Buffer = Buffer.Substring(0, Buffer.Length - 1);
-                    if (UndoBufferFrom != null)
-                    {
-                        if (UndoBufferFrom.Length == 1 || UndoBufferTo.Length == 1)
-                            UndoBufferFrom = null;
-                        else
-                        {
-                            UndoBufferFrom = UndoBufferFrom.Substring(0, UndoBufferFrom.Length - 1);
-                            UndoBufferTo = UndoBufferTo.Substring(0, UndoBufferTo.Length - 1);
-                        }
-                    }
-                    if (LastBufferCheck > 0) LastBufferCheck--;
-                }
-
-                bool alt = Pressed.Contains(Keys.LMenu) || Pressed.Contains(Keys.RMenu);
-                bool ctrl = Pressed.Contains(Keys.LControlKey) || Pressed.Contains(Keys.RControlKey);
-                bool shift = Pressed.Contains(Keys.LShiftKey) || Pressed.Contains(Keys.RShiftKey);
-
-                if (!alt && !ctrl)
-                {
-                    char? ch = null;
-                    if (shift && KeyToChar.Shift.ContainsKey(e.KeyCode))
-                        ch = KeyToChar.Shift[e.KeyCode];
-                    else if (!shift && KeyToChar.NoShift.ContainsKey(e.KeyCode))
-                        ch = KeyToChar.NoShift[e.KeyCode];
-                    if (ch != null)
-                    {
-                        Buffer += ch.Value;
-                        if (UndoBufferFrom != null)
-                        {
-                            UndoBufferFrom += ch.Value;
-                            UndoBufferTo += ch.Value;
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                Processing = false;
-            }
-        }
+        private static Keys[] _emptyKeys = Ut.NewArray<Keys>(Keys.LControlKey, Keys.RControlKey, Keys.Escape,
+                            Keys.Enter, Keys.Return, Keys.Tab,
+                            Keys.LMenu, Keys.RMenu, Keys.Up,
+                            Keys.Down, Keys.Left, Keys.Right,
+                            Keys.End, Keys.Home, Keys.PageDown, Keys.PageUp,
+                            Keys.F1, Keys.F2, Keys.F3, Keys.F4, Keys.F5, Keys.F6, Keys.F7, Keys.F8, Keys.F9, Keys.F10, Keys.F11, Keys.F12);
 
         private static void initUnicodeDataCache()
         {

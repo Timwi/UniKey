@@ -7,6 +7,6 @@ namespace UniKey
 {
     class Settings
     {
-        public List<Replacer> Replacers = new List<Replacer>();
+        public Dictionary<string, string> Replacers = new Dictionary<string, string>();
     }
 }
