@@ -369,14 +369,14 @@ namespace UniKey
             Processing = true;
             try
             {
-                // ** DEBUG LOGGING
-                //var buf = Encoding.UTF8.GetBytes("Down: " + e.KeyCode.ToString() + "\r\n");
-                //using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
-                //{
-                //    f.Write(buf, 0, buf.Length);
-                //    f.Close();
-                //}
-                // ** END DEBUG LOGGING
+#if DEBUG_LOG
+                var buf = Encoding.UTF8.GetBytes("Down: " + e.KeyCode.ToString() + "\r\n");
+                using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
+                {
+                    f.Write(buf, 0, buf.Length);
+                    f.Close();
+                }
+#endif
 
                 if (!Pressed.Contains(e.KeyCode))
                     Pressed.Add(e.KeyCode);
@@ -433,15 +433,14 @@ namespace UniKey
             Processing = true;
             try
             {
-                if (DebugLog)
+#if DEBUG_LOG
+                var buf = Encoding.UTF8.GetBytes("Up: " + e.KeyCode.ToString() + "\r\n");
+                using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
                 {
-                    var buf = Encoding.UTF8.GetBytes("Up: " + e.KeyCode.ToString() + "\r\n");
-                    using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
-                    {
-                        f.Write(buf, 0, buf.Length);
-                        f.Close();
-                    }
+                    f.Write(buf, 0, buf.Length);
+                    f.Close();
                 }
+#endif
 
                 Pressed.Remove(e.KeyCode);
 
