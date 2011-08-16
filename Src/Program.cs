@@ -19,8 +19,6 @@ namespace UniKey
 {
     static class Program
     {
-        const bool DebugLog = false;
-
         static Settings Settings;
         static GlobalKeyboardListener KeyboardListener;
         static List<Keys> Pressed = new List<Keys>();
@@ -371,15 +369,14 @@ namespace UniKey
             Processing = true;
             try
             {
-                if (DebugLog)
-                {
-                    var buf = Encoding.UTF8.GetBytes("Down: " + e.KeyCode.ToString() + "\r\n");
-                    using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
-                    {
-                        f.Write(buf, 0, buf.Length);
-                        f.Close();
-                    }
-                }
+                // ** DEBUG LOGGING
+                //var buf = Encoding.UTF8.GetBytes("Down: " + e.KeyCode.ToString() + "\r\n");
+                //using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
+                //{
+                //    f.Write(buf, 0, buf.Length);
+                //    f.Close();
+                //}
+                // ** END DEBUG LOGGING
 
                 if (!Pressed.Contains(e.KeyCode))
                     Pressed.Add(e.KeyCode);
