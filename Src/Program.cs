@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -215,6 +217,8 @@ namespace UniKey
                     p.Kill();
             }
 
+            _isNumLockOn = Control.IsKeyLocked(Keys.NumLock);
+
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
@@ -290,8 +294,8 @@ namespace UniKey
             var _ = GuiThreadInvoker.Handle;
             KeyboardListener = new GlobalKeyboardListener();
             KeyboardListener.HookAllKeys = true;
-            KeyboardListener.KeyDown += new KeyEventHandler(keyDown);
-            KeyboardListener.KeyUp += new KeyEventHandler(keyUp);
+            KeyboardListener.KeyDown += keyDown;
+            KeyboardListener.KeyUp += keyUp;
             Application.Run();
         }
 
@@ -313,11 +317,17 @@ namespace UniKey
         {
             var candidates = UnicodeData
                 .Where(kvp => words.All(w => kvp.Value.Contains(w)))
-                .Select(kvp => new SearchItem
+                .Select(kvp =>
                 {
-                    CodePoint = kvp.Key,
-                    Name = kvp.Value,
-                    Score = kvp.Value.Split(' ').Where(s => s.Length > 0).Select(s => s.Trim()).Sum(w => words.Contains(w) ? 20 : words.Any(w2 => w.Contains(w2)) ? 0 : -2)
+                    var split = kvp.Value.Split(' ');
+                    return new SearchItem
+                    {
+                        CodePoint = kvp.Key,
+                        Name = kvp.Value,
+                        Score =
+                            split.All(words.Contains) && words.All(split.Contains) ? 1000 :
+                            split.Where(s => s.Length > 0).Select(s => s.Trim()).Sum(w => words.Contains(w) ? 20 : words.Any(w2 => w.Contains(w2)) ? 0 : -2)
+                    };
                 })
                 .OrderByDescending(item => item.Score).AsEnumerable();
             return candidates;
@@ -362,7 +372,10 @@ namespace UniKey
             return buf.ToString();
         }
 
-        static void keyDown(object sender, KeyEventArgs e)
+        static Keys[] _numKeys = new[] { Keys.NumLock, Keys.NumPad0, Keys.NumPad1, Keys.NumPad2, Keys.NumPad3, Keys.NumPad4,
+            Keys.NumPad5, Keys.NumPad6, Keys.NumPad7, Keys.NumPad8, Keys.NumPad9, Keys.Multiply, Keys.Add, Keys.Subtract, Keys.Divide, Keys.Decimal };
+
+        static void keyDown(object sender, GlobalKeyEventArgs e)
         {
             if (Processing)
                 return;
@@ -378,15 +391,18 @@ namespace UniKey
                 }
 #endif
 
-                if (!Pressed.Contains(e.KeyCode))
-                    Pressed.Add(e.KeyCode);
+                //if (_numKeys.Contains(e.VirtualKeyCode))
+                //    GuiThreadInvoker.BeginInvoke(new Action<Keys>(processNumPad), e.VirtualKeyCode);
 
-                if (_emptyKeys.Contains(e.KeyCode))
+                if (!Pressed.Contains(e.VirtualKeyCode))
+                    Pressed.Add(e.VirtualKeyCode);
+
+                if (_emptyKeys.Contains(e.VirtualKeyCode))
                 {
                     Buffer = string.Empty;
                     UndoBufferFrom = null;
                 }
-                else if (e.KeyCode == Keys.Back && Buffer.Length > 0)
+                else if (e.VirtualKeyCode == Keys.Back && Buffer.Length > 0)
                 {
                     Buffer = Buffer.Substring(0, Buffer.Length - 1);
                     if (UndoBufferFrom != null)
@@ -410,7 +426,7 @@ namespace UniKey
                     if (!alt && !ctrl)
                     {
                         // special-case the secondary backslash key
-                        var str = (e.KeyCode == Keys.Oem5) ? "←" : getCharsFromKeys(e.KeyCode, shift);
+                        var str = (e.VirtualKeyCode == Keys.Oem5) ? "←" : getCharsFromKeys(e.VirtualKeyCode, shift);
                         Buffer += str;
                         if (UndoBufferFrom != null)
                         {
@@ -426,7 +442,133 @@ namespace UniKey
             }
         }
 
-        static void keyUp(object sender, KeyEventArgs e)
+        private static Form _gridForm;
+        private static Screen _gridFormScreen;
+        private static bool _isNumLockOn;
+        private static bool _rightMouseButton;
+        private static Point? _dragStartFrom;
+
+        private static void closeGridForm()
+        {
+            _gridForm.Close();
+            _gridForm.Dispose();
+            _gridForm = null;
+        }
+
+        private static void processNumPad(Keys key)
+        {
+            var newBounds = _gridForm == null ? Screen.PrimaryScreen.Bounds : _gridForm.Bounds;
+
+            if (key == Keys.NumLock)
+            {
+                _isNumLockOn = !_isNumLockOn;
+                if (_gridForm != null)
+                    closeGridForm();
+                if (_isNumLockOn)
+                {
+                    _gridFormScreen = Screen.PrimaryScreen;
+                    _gridForm = new Form { FormBorderStyle = FormBorderStyle.None, MinimizeBox = false, MaximizeBox = false };
+                    _gridForm.TopMost = true;
+                    newBounds = _gridFormScreen.Bounds;
+                    _gridForm.Paint += (s, e) =>
+                    {
+                        var brush = new HatchBrush(HatchStyle.Percent50, Color.White, Color.Black);
+                        e.Graphics.FillRectangle(brush, 0, 0, _gridFormScreen.Bounds.Width, _gridFormScreen.Bounds.Height);
+                    };
+                    _rightMouseButton = false;
+                    _dragStartFrom = null;
+                }
+            }
+            else
+            {
+                if (_isNumLockOn != Control.IsKeyLocked(Keys.NumLock))
+                    throw new InvalidOperationException("Num Lock state inconsistent");
+                if (_gridForm == null)
+                    return;
+
+                var pos = new Point(_gridForm.Left + _gridForm.Width / 2, _gridForm.Top + _gridForm.Height / 2);
+
+                if (key == Keys.Subtract)
+                    _rightMouseButton = true;
+                else if (key == Keys.Divide)
+                    _rightMouseButton = false;
+                else if (key == Keys.Add)
+                {
+                    closeGridForm();
+                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTDOWN : WinAPI.MOUSEEVENTF_LEFTDOWN, pos.X, pos.Y, 0, 0);
+                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTUP : WinAPI.MOUSEEVENTF_LEFTUP, pos.X, pos.Y, 0, 0);
+                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTDOWN : WinAPI.MOUSEEVENTF_LEFTDOWN, pos.X, pos.Y, 0, 0);
+                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTUP : WinAPI.MOUSEEVENTF_LEFTUP, pos.X, pos.Y, 0, 0);
+                    //WinAPI.keybd_event((byte) Keys.NumLock, 0x45, 0, 0);
+                    //WinAPI.keybd_event((byte) Keys.NumLock, 0x45, WinAPI.KEYEVENTF_KEYUP, 0);
+                }
+                else if (key == Keys.NumPad0)
+                {
+                    _dragStartFrom = pos;
+                    newBounds = _gridFormScreen.Bounds;
+                }
+                else if (key == Keys.Decimal)
+                {
+                    closeGridForm();
+                    var from = _dragStartFrom ?? pos;
+                    Cursor.Position = from;
+                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTDOWN : WinAPI.MOUSEEVENTF_LEFTDOWN, from.X, from.Y, 0, 0);
+                    Cursor.Position = pos;
+                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTUP : WinAPI.MOUSEEVENTF_LEFTUP, pos.X, pos.Y, 0, 0);
+                    //WinAPI.keybd_event((byte) Keys.NumLock, 0x45, 0, 0);
+                    //WinAPI.keybd_event((byte) Keys.NumLock, 0x45, WinAPI.KEYEVENTF_KEYUP, 0);
+                }
+                else if (key == Keys.NumPad7)   // top left
+                    newBounds = new Rectangle(newBounds.X, newBounds.Y, newBounds.Width / 3, newBounds.Height / 3);
+                else if (key == Keys.NumPad8)   // top
+                    newBounds = new Rectangle(newBounds.X + newBounds.Width / 3, newBounds.Y, newBounds.Width / 3, newBounds.Height / 3);
+                else if (key == Keys.NumPad9)   // top right
+                    newBounds = new Rectangle(newBounds.X + 2 * newBounds.Width / 3, newBounds.Y, newBounds.Width / 3, newBounds.Height / 3);
+                else if (key == Keys.NumPad4)   // middle left
+                    newBounds = new Rectangle(newBounds.X, newBounds.Y + newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
+                else if (key == Keys.NumPad5)   // center
+                    newBounds = new Rectangle(newBounds.X + newBounds.Width / 3, newBounds.Y + newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
+                else if (key == Keys.NumPad6)   // middle right
+                    newBounds = new Rectangle(newBounds.X + 2 * newBounds.Width / 3, newBounds.Y + newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
+                else if (key == Keys.NumPad1)   // bottom left
+                    newBounds = new Rectangle(newBounds.X, newBounds.Y + 2 * newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
+                else if (key == Keys.NumPad2)   // bottom
+                    newBounds = new Rectangle(newBounds.X + newBounds.Width / 3, newBounds.Y + 2 * newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
+                else if (key == Keys.NumPad3)   // bottom right
+                    newBounds = new Rectangle(newBounds.X + 2 * newBounds.Width / 3, newBounds.Y + 2 * newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
+            }
+
+            if (_gridForm != null)
+            {
+                if (newBounds.Width == 0)
+                    newBounds.Width = 1;
+                if (newBounds.Height == 0)
+                    newBounds.Height = 1;
+                _gridForm.Bounds = newBounds;
+
+                var reg = new Region(new Rectangle(0, 0, _gridFormScreen.Bounds.Width, _gridFormScreen.Bounds.Height));
+                var w = _gridForm.Bounds.Width / 3;
+                var h = _gridForm.Bounds.Height / 3;
+
+                reg.Xor(new Rectangle(1, 1, w - 1, h - 1));
+                reg.Xor(new Rectangle(w + 1, 1, w - 1, h - 1));
+                reg.Xor(new Rectangle(2 * w + 1, 1, _gridForm.Bounds.Width - 2 * w - 2, h - 1));
+
+                reg.Xor(new Rectangle(1, h + 1, w - 1, h - 1));
+                reg.Xor(new Rectangle(w + 1, h + 1, w - 1, h - 1));
+                reg.Xor(new Rectangle(2 * w + 1, h + 1, _gridForm.Bounds.Width - 2 * w - 2, h - 1));
+
+                reg.Xor(new Rectangle(1, 2 * h + 1, w - 1, _gridForm.Bounds.Height - 2 * h - 2));
+                reg.Xor(new Rectangle(w + 1, 2 * h + 1, w - 1, _gridForm.Bounds.Height - 2 * h - 2));
+                reg.Xor(new Rectangle(2 * w + 1, 2 * h + 1, _gridForm.Bounds.Width - 2 * w - 2, _gridForm.Bounds.Height - 2 * h - 2));
+
+                _gridForm.Region = reg;
+                _gridForm.Show();
+                Cursor.Position = new Point(_gridForm.Left + _gridForm.Width / 2, _gridForm.Top + _gridForm.Height / 2);
+            }
+        }
+
+        static void keyUp(object sender, GlobalKeyEventArgs e)
         {
             if (Processing)
                 return;
@@ -442,7 +584,7 @@ namespace UniKey
                 }
 #endif
 
-                Pressed.Remove(e.KeyCode);
+                Pressed.Remove(e.VirtualKeyCode);
 
                 if (LastBufferCheck > Buffer.Length)
                     LastBufferCheck = Buffer.Length;
