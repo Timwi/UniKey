@@ -383,7 +383,7 @@ namespace UniKey
             try
             {
 #if DEBUG_LOG
-                var buf = Encoding.UTF8.GetBytes("Down: " + e.KeyCode.ToString() + "\r\n");
+                var buf = Encoding.UTF8.GetBytes("Down: " + e.VirtualKeyCode.ToString() + "\r\n");
                 using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
                 {
                     f.Write(buf, 0, buf.Length);
@@ -576,7 +576,7 @@ namespace UniKey
             try
             {
 #if DEBUG_LOG
-                var buf = Encoding.UTF8.GetBytes("Up: " + e.KeyCode.ToString() + "\r\n");
+                var buf = Encoding.UTF8.GetBytes("Up: " + e.VirtualKeyCode.ToString() + "\r\n");
                 using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
                 {
                     f.Write(buf, 0, buf.Length);
