@@ -90,6 +90,9 @@ namespace UniKey
                         : new ReplaceResult(m.Length, "Invalid codepoint.");
                 }),
 
+            new CommandInfo(@"\{cp( .)?\}$", @"{cp <character>}, {cp}", @"Outputs the hexadecimal Unicode codepoint value of the specified character, or the first character from the clipboard if none specified, as keystrokes.",
+                m => new ReplaceResult(m.Length, (m.Groups[1].Length > 0 ? char.ConvertToUtf32(m.Groups[1].Value, 1) : char.ConvertToUtf32(Clipboard.GetText(), 0)).ToString("X4"))),
+
             new CommandInfo(@"\{c ([^\{\}]+)\}$", "{c <text>}", @"Converts the specified text to Cyrillic.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Cyrillic, m.Groups[1].Value))),
             new CommandInfo(@"\{el ([^\{\}]+)\}$", "{el <text>}", @"Converts the specified text to Greek.",
