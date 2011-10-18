@@ -51,7 +51,7 @@ namespace UniKey
                 m => add(m.Groups[1].Value, m.Length)),
 
             new CommandInfo(@"\{ren ([^ \{\}]+) ([^ \{\}]+)\}$", "{ren <oldkey> <newkey>}",
-                @"Changes the key for an existing replacement rule. Each key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'.",
+                @"Changes the key for an existing replacement rule. Each key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'. (Note this command does not work for keys containing spaces; you must use {del <key>} followed by {add <key>} for those.)",
                 m => ren(m.Groups[1].Value, m.Groups[2].Value, m.Length)),
 
             new CommandInfo(@"\{setpassword ([^\{\}]+)\}$", "{setpassword <newpassword>}",
@@ -64,12 +64,12 @@ namespace UniKey
 
             new CommandInfo(@"\{help\}$", "{help}", @"Displays this help screen.", m => help(m.Length)),
 
-            new CommandInfo(@"\{find\s+([^\{\}]+?)\s*\}$", @"{find <words>}",
+            new CommandInfo(@"\{f\s+([^\{\}]+?)\s*\}$", @"{f <words>}",
                 @"Searches for a Unicode character using the specified keywords and outputs the best match.",
                 m => find(m.Groups[1].Value, m.Length)),
 
-            new CommandInfo(@"\{findall\s+([^\{\}]+?)\s*\}$", @"{findall <words>}",
-                @"FInds all Unicode characters whose names contain the specified words, and places a tabular list of those characters in the clipboard.",
+            new CommandInfo(@"\{fa\s+([^\{\}]+?)\s*\}$", @"{fa <words>}",
+                @"Finds all Unicode characters whose names contain the specified words, and places a tabular list of those characters in the clipboard.",
                 m => findAll(m.Groups[1].Value, m.Length)),
 
             new CommandInfo(@"\{html\}$", @"{html}", @"HTML-escapes the current contents of the clipboard and outputs the result as keystrokes.",
