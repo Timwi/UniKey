@@ -220,8 +220,6 @@ namespace UniKey
                     p.Kill();
             }
 
-            _isNumLockOn = Control.IsKeyLocked(Keys.NumLock);
-
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
@@ -375,8 +373,14 @@ namespace UniKey
             return buf.ToString();
         }
 
-        static Keys[] _numKeys = new[] { Keys.NumLock, Keys.NumPad0, Keys.NumPad1, Keys.NumPad2, Keys.NumPad3, Keys.NumPad4,
-            Keys.NumPad5, Keys.NumPad6, Keys.NumPad7, Keys.NumPad8, Keys.NumPad9, Keys.Multiply, Keys.Add, Keys.Subtract, Keys.Divide, Keys.Decimal };
+        static Keys[] _numKeys = Ut.NewArray(
+            // Without shift
+            Keys.NumPad0, Keys.NumPad1, Keys.NumPad2, Keys.NumPad3, Keys.NumPad4, Keys.NumPad5, Keys.NumPad6, Keys.NumPad7, Keys.NumPad8, Keys.NumPad9, Keys.Decimal,
+            // With shift
+            Keys.Insert, Keys.End, Keys.Down, Keys.PageDown, Keys.Left, Keys.Clear, Keys.Right, Keys.Home, Keys.Up, Keys.PageUp, Keys.Delete,
+            // Unshiftable
+            Keys.Multiply, Keys.Add, Keys.Subtract, Keys.Divide, Keys.Escape
+        );
 
         static void keyDown(object sender, GlobalKeyEventArgs e)
         {
@@ -386,7 +390,7 @@ namespace UniKey
             try
             {
 #if DEBUG_LOG
-                var buf = Encoding.UTF8.GetBytes("Down: " + e.VirtualKeyCode.ToString() + "\r\n");
+                var buf = Encoding.UTF8.GetBytes("Down: {0} (NumLock: {1})\r\n".Fmt(e.VirtualKeyCode, Control.IsKeyLocked(Keys.NumLock)));
                 using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
                 {
                     f.Write(buf, 0, buf.Length);
@@ -394,8 +398,28 @@ namespace UniKey
                 }
 #endif
 
-                //if (_numKeys.Contains(e.VirtualKeyCode))
-                //    GuiThreadInvoker.BeginInvoke(new Action<Keys>(processNumPad), e.VirtualKeyCode);
+                if (e.VirtualKeyCode == Keys.NumLock && Control.IsKeyLocked(Keys.NumLock))
+                    setGridBounds(false, null, Rectangle.Empty, null, false);
+                else if (Control.IsKeyLocked(Keys.NumLock) && _numKeys.Contains(e.VirtualKeyCode))
+                {
+                    var key =
+                        e.VirtualKeyCode == Keys.Insert ? (Keys.ShiftKey | Keys.NumPad0) :
+                        e.VirtualKeyCode == Keys.End ? (Keys.ShiftKey | Keys.NumPad1) :
+                        e.VirtualKeyCode == Keys.Down ? (Keys.ShiftKey | Keys.NumPad2) :
+                        e.VirtualKeyCode == Keys.PageDown ? (Keys.ShiftKey | Keys.NumPad3) :
+                        e.VirtualKeyCode == Keys.Left ? (Keys.ShiftKey | Keys.NumPad4) :
+                        e.VirtualKeyCode == Keys.Clear ? (Keys.ShiftKey | Keys.NumPad5) :
+                        e.VirtualKeyCode == Keys.Right ? (Keys.ShiftKey | Keys.NumPad6) :
+                        e.VirtualKeyCode == Keys.Home ? (Keys.ShiftKey | Keys.NumPad7) :
+                        e.VirtualKeyCode == Keys.Up ? (Keys.ShiftKey | Keys.NumPad8) :
+                        e.VirtualKeyCode == Keys.PageUp ? (Keys.ShiftKey | Keys.NumPad9) :
+                        e.VirtualKeyCode == Keys.Delete ? (Keys.ShiftKey | Keys.Decimal) : e.VirtualKeyCode;
+                    if (processNumPad(key))
+                    {
+                        e.Handled = true;
+                        return;
+                    }
+                }
 
                 if (!Pressed.Contains(e.VirtualKeyCode))
                     Pressed.Add(e.VirtualKeyCode);
@@ -447,128 +471,196 @@ namespace UniKey
 
         private static Form _gridForm;
         private static Screen _gridFormScreen;
-        private static bool _isNumLockOn;
+        private static Stack<Rectangle> _gridUndo = new Stack<Rectangle>();
         private static bool _rightMouseButton;
         private static Point? _dragStartFrom;
 
-        private static void closeGridForm()
+        private static void setGridBounds(bool shown, Screen screen, Rectangle bounds, Action extraAction, bool regionFirst)
         {
-            _gridForm.Close();
-            _gridForm.Dispose();
-            _gridForm = null;
+            GuiThreadInvoker.BeginInvoke(new Action(() =>
+            {
+                if (shown)
+                {
+                    _gridFormScreen = screen;
+
+                    if (_gridForm == null)
+                    {
+                        _gridForm = new Form { FormBorderStyle = FormBorderStyle.None, MinimizeBox = false, MaximizeBox = false, StartPosition = FormStartPosition.Manual };
+                        _gridForm.TopMost = true;
+                        _gridForm.Paint += (s, e) =>
+                        {
+                            var brush = new HatchBrush(HatchStyle.Percent50, Color.White, Color.Black);
+                            e.Graphics.FillRectangle(brush, 0, 0, screen.Bounds.Width, _gridFormScreen.Bounds.Height);
+                        };
+                        _rightMouseButton = false;
+                        _dragStartFrom = null;
+                    }
+
+                    if (bounds.Width == 0)
+                        bounds.Width = 1;
+                    if (bounds.Height == 0)
+                        bounds.Height = 1;
+
+                    var reg = new Region(new Rectangle(0, 0, bounds.Width, bounds.Height));
+                    var w = bounds.Width / 3;
+                    var h = bounds.Height / 3;
+
+                    reg.Xor(new Rectangle(1, 1, w - 1, h - 1));
+                    reg.Xor(new Rectangle(w + 1, 1, w - 1, h - 1));
+                    reg.Xor(new Rectangle(2 * w + 1, 1, bounds.Width - 2 * w - 2, h - 1));
+
+                    reg.Xor(new Rectangle(1, h + 1, w - 1, h - 1));
+                    reg.Xor(new Rectangle(w + 1, h + 1, w - 1, h - 1));
+                    reg.Xor(new Rectangle(2 * w + 1, h + 1, bounds.Width - 2 * w - 2, h - 1));
+
+                    reg.Xor(new Rectangle(1, 2 * h + 1, w - 1, bounds.Height - 2 * h - 2));
+                    reg.Xor(new Rectangle(w + 1, 2 * h + 1, w - 1, bounds.Height - 2 * h - 2));
+                    reg.Xor(new Rectangle(2 * w + 1, 2 * h + 1, bounds.Width - 2 * w - 2, bounds.Height - 2 * h - 2));
+
+                    if (regionFirst)
+                    {
+                        _gridForm.Region = reg;
+                        _gridForm.Bounds = bounds;
+                    }
+                    else
+                    {
+                        _gridForm.Bounds = bounds;
+                        _gridForm.Region = reg;
+                    }
+                    _gridForm.Show();
+
+                    Cursor.Position = new Point(_gridForm.Left + _gridForm.Width / 2, _gridForm.Top + _gridForm.Height / 2);
+                }
+                else
+                {
+                    if (_gridForm != null)
+                    {
+                        _gridForm.Close();
+                        _gridForm.Dispose();
+                        _gridForm = null;
+                    }
+                }
+                if (extraAction != null)
+                    extraAction();
+            }));
         }
 
-        private static void processNumPad(Keys key)
+        private static bool processNumPad(Keys key)
         {
-            var newBounds = _gridForm == null ? Screen.PrimaryScreen.Bounds : _gridForm.Bounds;
+            if (_gridForm == null)
+                _gridUndo.Clear();
 
-            if (key == Keys.NumLock)
+            bool newShown = _gridForm != null;
+            Screen newScreen = _gridForm != null ? _gridFormScreen : Screen.PrimaryScreen;
+            Rectangle newBounds = _gridForm != null ? _gridForm.Bounds : Screen.PrimaryScreen.Bounds;
+            Point pos = new Point(newBounds.Left + newBounds.Width / 2, newBounds.Top + newBounds.Height / 2);
+            Action execute = null;
+            bool regionFirst = false;
+
+            var keyWithoutShift = key & ~Keys.ShiftKey;
+            var shift = (key & Keys.ShiftKey) == Keys.ShiftKey;
+
+            switch (keyWithoutShift)
             {
-                _isNumLockOn = !_isNumLockOn;
-                if (_gridForm != null)
-                    closeGridForm();
-                if (_isNumLockOn)
-                {
-                    _gridFormScreen = Screen.PrimaryScreen;
-                    _gridForm = new Form { FormBorderStyle = FormBorderStyle.None, MinimizeBox = false, MaximizeBox = false };
-                    _gridForm.TopMost = true;
-                    newBounds = _gridFormScreen.Bounds;
-                    _gridForm.Paint += (s, e) =>
+                case Keys.NumLock:
+                    newShown = false;
+                    break;
+
+                case Keys.Multiply:
+                    if (_gridUndo.Count > 0)
                     {
-                        var brush = new HatchBrush(HatchStyle.Percent50, Color.White, Color.Black);
-                        e.Graphics.FillRectangle(brush, 0, 0, _gridFormScreen.Bounds.Width, _gridFormScreen.Bounds.Height);
-                    };
-                    _rightMouseButton = false;
-                    _dragStartFrom = null;
-                }
-            }
-            else
-            {
-                if (_isNumLockOn != Control.IsKeyLocked(Keys.NumLock))
-                    throw new InvalidOperationException("Num Lock state inconsistent");
-                if (_gridForm == null)
-                    return;
+                        newBounds = _gridUndo.Pop();
+                        regionFirst = true;
+                    }
+                    break;
 
-                var pos = new Point(_gridForm.Left + _gridForm.Width / 2, _gridForm.Top + _gridForm.Height / 2);
-
-                if (key == Keys.Subtract)
+                case Keys.Subtract:
                     _rightMouseButton = true;
-                else if (key == Keys.Divide)
+                    newShown = true;
+                    break;
+                case Keys.Divide:
                     _rightMouseButton = false;
-                else if (key == Keys.Add)
-                {
-                    closeGridForm();
-                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTDOWN : WinAPI.MOUSEEVENTF_LEFTDOWN, pos.X, pos.Y, 0, 0);
-                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTUP : WinAPI.MOUSEEVENTF_LEFTUP, pos.X, pos.Y, 0, 0);
-                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTDOWN : WinAPI.MOUSEEVENTF_LEFTDOWN, pos.X, pos.Y, 0, 0);
-                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTUP : WinAPI.MOUSEEVENTF_LEFTUP, pos.X, pos.Y, 0, 0);
-                    //WinAPI.keybd_event((byte) Keys.NumLock, 0x45, 0, 0);
-                    //WinAPI.keybd_event((byte) Keys.NumLock, 0x45, WinAPI.KEYEVENTF_KEYUP, 0);
-                }
-                else if (key == Keys.NumPad0)
-                {
+                    newShown = true;
+                    break;
+
+                case Keys.Add:
+                    newShown = false;
+                    execute = () =>
+                    {
+                        WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTDOWN : WinAPI.MOUSEEVENTF_LEFTDOWN, pos.X, pos.Y, 0, 0);
+                        WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTUP : WinAPI.MOUSEEVENTF_LEFTUP, pos.X, pos.Y, 0, 0);
+                        WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTDOWN : WinAPI.MOUSEEVENTF_LEFTDOWN, pos.X, pos.Y, 0, 0);
+                        WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTUP : WinAPI.MOUSEEVENTF_LEFTUP, pos.X, pos.Y, 0, 0);
+                    };
+                    break;
+
+                case Keys.NumPad0:
                     _dragStartFrom = pos;
                     newBounds = _gridFormScreen.Bounds;
-                }
-                else if (key == Keys.Decimal)
-                {
-                    closeGridForm();
+                    break;
+
+                case Keys.Decimal:
+                    newShown = false;
                     var from = _dragStartFrom ?? pos;
-                    Cursor.Position = from;
-                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTDOWN : WinAPI.MOUSEEVENTF_LEFTDOWN, from.X, from.Y, 0, 0);
-                    Cursor.Position = pos;
-                    WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTUP : WinAPI.MOUSEEVENTF_LEFTUP, pos.X, pos.Y, 0, 0);
-                    //WinAPI.keybd_event((byte) Keys.NumLock, 0x45, 0, 0);
-                    //WinAPI.keybd_event((byte) Keys.NumLock, 0x45, WinAPI.KEYEVENTF_KEYUP, 0);
-                }
-                else if (key == Keys.NumPad7)   // top left
-                    newBounds = new Rectangle(newBounds.X, newBounds.Y, newBounds.Width / 3, newBounds.Height / 3);
-                else if (key == Keys.NumPad8)   // top
-                    newBounds = new Rectangle(newBounds.X + newBounds.Width / 3, newBounds.Y, newBounds.Width / 3, newBounds.Height / 3);
-                else if (key == Keys.NumPad9)   // top right
-                    newBounds = new Rectangle(newBounds.X + 2 * newBounds.Width / 3, newBounds.Y, newBounds.Width / 3, newBounds.Height / 3);
-                else if (key == Keys.NumPad4)   // middle left
-                    newBounds = new Rectangle(newBounds.X, newBounds.Y + newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
-                else if (key == Keys.NumPad5)   // center
-                    newBounds = new Rectangle(newBounds.X + newBounds.Width / 3, newBounds.Y + newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
-                else if (key == Keys.NumPad6)   // middle right
-                    newBounds = new Rectangle(newBounds.X + 2 * newBounds.Width / 3, newBounds.Y + newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
-                else if (key == Keys.NumPad1)   // bottom left
-                    newBounds = new Rectangle(newBounds.X, newBounds.Y + 2 * newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
-                else if (key == Keys.NumPad2)   // bottom
-                    newBounds = new Rectangle(newBounds.X + newBounds.Width / 3, newBounds.Y + 2 * newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
-                else if (key == Keys.NumPad3)   // bottom right
-                    newBounds = new Rectangle(newBounds.X + 2 * newBounds.Width / 3, newBounds.Y + 2 * newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3);
+                    execute = () =>
+                    {
+                        Cursor.Position = from;
+                        WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTDOWN : WinAPI.MOUSEEVENTF_LEFTDOWN, from.X, from.Y, 0, 0);
+                        Cursor.Position = pos;
+                        WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTUP : WinAPI.MOUSEEVENTF_LEFTUP, pos.X, pos.Y, 0, 0);
+                    };
+                    break;
+
+                case Keys.NumPad7:
+                case Keys.NumPad8:
+                case Keys.NumPad9:
+                case Keys.NumPad4:
+                case Keys.NumPad5:
+                case Keys.NumPad6:
+                case Keys.NumPad1:
+                case Keys.NumPad2:
+                case Keys.NumPad3:
+                    if (shift && newShown)
+                    {
+                        newBounds =
+                            keyWithoutShift == Keys.NumPad7 ? new Rectangle(newBounds.X - newBounds.Width, newBounds.Y - newBounds.Height, newBounds.Width, newBounds.Height) :
+                            keyWithoutShift == Keys.NumPad8 ? new Rectangle(newBounds.X, newBounds.Y - newBounds.Height, newBounds.Width, newBounds.Height) :
+                            keyWithoutShift == Keys.NumPad9 ? new Rectangle(newBounds.X + newBounds.Width, newBounds.Y - newBounds.Height, newBounds.Width, newBounds.Height) :
+                            keyWithoutShift == Keys.NumPad4 ? new Rectangle(newBounds.X - newBounds.Width, newBounds.Y, newBounds.Width, newBounds.Height) :
+                            keyWithoutShift == Keys.NumPad6 ? new Rectangle(newBounds.X + newBounds.Width, newBounds.Y, newBounds.Width, newBounds.Height) :
+                            keyWithoutShift == Keys.NumPad1 ? new Rectangle(newBounds.X - newBounds.Width, newBounds.Y + newBounds.Height, newBounds.Width, newBounds.Height) :
+                            keyWithoutShift == Keys.NumPad2 ? new Rectangle(newBounds.X, newBounds.Y + newBounds.Height, newBounds.Width, newBounds.Height) :
+                            keyWithoutShift == Keys.NumPad3 ? new Rectangle(newBounds.X + newBounds.Width, newBounds.Y + newBounds.Height, newBounds.Width, newBounds.Height) :
+                            newBounds;
+                        if (newBounds.X < 0) newBounds.X = 0;
+                        if (newBounds.Y < 0) newBounds.Y = 0;
+                        if (newBounds.Right > _gridFormScreen.Bounds.Width) newBounds.X = _gridFormScreen.Bounds.Width - newBounds.Width;
+                        if (newBounds.Bottom > _gridFormScreen.Bounds.Height) newBounds.Y = _gridFormScreen.Bounds.Height - newBounds.Height;
+                    }
+                    else
+                    {
+                        newShown = true;
+                        _gridUndo.Push(newBounds);
+                        newBounds =
+                            keyWithoutShift == Keys.NumPad7 ? new Rectangle(newBounds.X, newBounds.Y, newBounds.Width / 3, newBounds.Height / 3) :
+                            keyWithoutShift == Keys.NumPad8 ? new Rectangle(newBounds.X + newBounds.Width / 3, newBounds.Y, newBounds.Width / 3, newBounds.Height / 3) :
+                            keyWithoutShift == Keys.NumPad9 ? new Rectangle(newBounds.X + 2 * newBounds.Width / 3, newBounds.Y, newBounds.Width / 3, newBounds.Height / 3) :
+                            keyWithoutShift == Keys.NumPad4 ? new Rectangle(newBounds.X, newBounds.Y + newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3) :
+                            keyWithoutShift == Keys.NumPad5 ? new Rectangle(newBounds.X + newBounds.Width / 3, newBounds.Y + newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3) :
+                            keyWithoutShift == Keys.NumPad6 ? new Rectangle(newBounds.X + 2 * newBounds.Width / 3, newBounds.Y + newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3) :
+                            keyWithoutShift == Keys.NumPad1 ? new Rectangle(newBounds.X, newBounds.Y + 2 * newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3) :
+                            keyWithoutShift == Keys.NumPad2 ? new Rectangle(newBounds.X + newBounds.Width / 3, newBounds.Y + 2 * newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3) :
+                            keyWithoutShift == Keys.NumPad3 ? new Rectangle(newBounds.X + 2 * newBounds.Width / 3, newBounds.Y + 2 * newBounds.Height / 3, newBounds.Width / 3, newBounds.Height / 3) :
+                            newBounds;
+                    }
+                    break;
+
+                default:
+                    return false;
             }
 
-            if (_gridForm != null)
-            {
-                if (newBounds.Width == 0)
-                    newBounds.Width = 1;
-                if (newBounds.Height == 0)
-                    newBounds.Height = 1;
-                _gridForm.Bounds = newBounds;
-
-                var reg = new Region(new Rectangle(0, 0, _gridFormScreen.Bounds.Width, _gridFormScreen.Bounds.Height));
-                var w = _gridForm.Bounds.Width / 3;
-                var h = _gridForm.Bounds.Height / 3;
-
-                reg.Xor(new Rectangle(1, 1, w - 1, h - 1));
-                reg.Xor(new Rectangle(w + 1, 1, w - 1, h - 1));
-                reg.Xor(new Rectangle(2 * w + 1, 1, _gridForm.Bounds.Width - 2 * w - 2, h - 1));
-
-                reg.Xor(new Rectangle(1, h + 1, w - 1, h - 1));
-                reg.Xor(new Rectangle(w + 1, h + 1, w - 1, h - 1));
-                reg.Xor(new Rectangle(2 * w + 1, h + 1, _gridForm.Bounds.Width - 2 * w - 2, h - 1));
-
-                reg.Xor(new Rectangle(1, 2 * h + 1, w - 1, _gridForm.Bounds.Height - 2 * h - 2));
-                reg.Xor(new Rectangle(w + 1, 2 * h + 1, w - 1, _gridForm.Bounds.Height - 2 * h - 2));
-                reg.Xor(new Rectangle(2 * w + 1, 2 * h + 1, _gridForm.Bounds.Width - 2 * w - 2, _gridForm.Bounds.Height - 2 * h - 2));
-
-                _gridForm.Region = reg;
-                _gridForm.Show();
-                Cursor.Position = new Point(_gridForm.Left + _gridForm.Width / 2, _gridForm.Top + _gridForm.Height / 2);
-            }
+            setGridBounds(newShown, newScreen, newBounds, execute, regionFirst);
+            return true;
         }
 
         static void keyUp(object sender, GlobalKeyEventArgs e)
