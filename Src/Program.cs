@@ -38,7 +38,7 @@ namespace UniKey
             new CommandInfo(@"\{exit\}$", "{exit}", "Exits UniKey.",
                 m =>
                 {
-                    GuiThreadInvoker.BeginInvoke(new Action(() => { Application.Exit(); }));
+                    Application.Exit();
                     return new ReplaceResult(m.Length, "Exiting.");
                 }),
 
@@ -56,11 +56,11 @@ namespace UniKey
 
             new CommandInfo(@"\{setpassword ([^\{\}]+)\}$", "{setpassword <newpassword>}",
                 @"Encrypts the UniKey data file using the specified password. You will be prompted for the password every time UniKey starts. If you forget the password, you will not be able to retrieve your UniKey data.",
-                m => { Password = m.Groups[1].Value; save(); return new ReplaceResult(m.Length, "done"); }),
+                m => { Password = m.Groups[1].Value; saveLater(); return new ReplaceResult(m.Length, "done"); }),
 
             new CommandInfo(@"\{removepassword\}$", "{removepassword}",
                 @"Saves the UniKey data file unencrypted. You will no longer be prompted for a password when UniKey starts.",
-                m => { Password = null; save(); return new ReplaceResult(m.Length, "done"); }),
+                m => { Password = null; saveLater(); return new ReplaceResult(m.Length, "done"); }),
 
             new CommandInfo(@"\{help\}$", "{help}", @"Displays this help screen.", m => help(m.Length)),
 
@@ -100,7 +100,16 @@ namespace UniKey
             new CommandInfo(@"\{hi ([^\{\}]+)\}$", "{hi <text>}", @"Converts the specified text to Hiragana.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Hiragana, m.Groups[1].Value))),
             new CommandInfo(@"\{ka ([^\{\}]+)\}$", "{ka <text>}", @"Converts the specified text to Katakana.",
-                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Katakana, m.Groups[1].Value)))
+                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Katakana, m.Groups[1].Value))),
+
+            new CommandInfo(@"\{set mousegrid (on|off)\}", "{set mousegrid <on/off>}",
+                @"Enables or disables the mouse grid feature. The mouse grid is activated by turning Num Lock on and then operated using the keys on the NumPad.",
+                m =>
+                {
+                    Settings.MouseGridEnabled = m.Groups[1].Value == "on";
+                    saveLater();
+                    return new ReplaceResult(m.Length, "Mouse grid now {0}.".Fmt(m.Groups[1].Value));
+                })
         );
 
         private static ReplaceResult del(string key, int length)
@@ -108,7 +117,7 @@ namespace UniKey
             if (!Settings.Replacers.ContainsKey(key))
                 return new ReplaceResult(length, "not found");
             Settings.Replacers.Remove(key);
-            save();
+            saveLater();
             return new ReplaceResult(length, "done");
         }
 
@@ -119,11 +128,11 @@ namespace UniKey
             if (Settings.Replacers.TryGetValue(key, out existing))
             {
                 Settings.Replacers[key] = newRepl;
-                save();
+                saveLater();
                 return new ReplaceResult(length, "updated: {0} ⇒ {1}".Fmt(existing, newRepl));
             }
             Settings.Replacers[key] = newRepl;
-            save();
+            saveLater();
             return new ReplaceResult(length, "added: " + newRepl);
         }
 
@@ -136,7 +145,7 @@ namespace UniKey
             var replaceWith = Settings.Replacers[oldInput];
             Settings.Replacers.Remove(oldInput);
             Settings.Replacers[newInput] = replaceWith;
-            save();
+            saveLater();
             return new ReplaceResult(length, "done");
         }
 
@@ -208,9 +217,6 @@ namespace UniKey
         private static byte[] _iv = "A,EW9%9Enp{1!oiN".ToUtf8();
         private static byte[] _salt = "kdSkeuDkj3%k".ToUtf8();
 
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
         [STAThread]
         static void Main()
         {
@@ -223,6 +229,47 @@ namespace UniKey
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
+            if (!loadSettings())
+                return;
+
+            GuiThreadInvoker = new Form();
+            var _ = GuiThreadInvoker.Handle;
+
+            var reloadSettingsFileTimer = new Timer { Enabled = false, Interval = 5000 };
+            reloadSettingsFileTimer.Tick += delegate
+            {
+                reloadSettingsFileTimer.Enabled = false;
+                if (!loadSettings())
+                    Application.Exit();
+            };
+
+            var fsw = new FileSystemWatcher(PathUtil.AppPath, "UniKey.settings.xml")
+            {
+                IncludeSubdirectories = false,
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
+            };
+
+            FileSystemEventHandler scheduleReloadSettings = delegate
+            {
+                GuiThreadInvoker.BeginInvoke(new Action(() =>
+                {
+                    reloadSettingsFileTimer.Enabled = false;
+                    reloadSettingsFileTimer.Enabled = true;
+                }));
+            };
+            fsw.Changed += scheduleReloadSettings;
+            fsw.Created += scheduleReloadSettings;
+            fsw.EnableRaisingEvents = true;
+
+            KeyboardListener = new GlobalKeyboardListener();
+            KeyboardListener.HookAllKeys = true;
+            KeyboardListener.KeyDown += keyDown;
+            KeyboardListener.KeyUp += keyUp;
+            Application.Run();
+        }
+
+        private static bool loadSettings()
+        {
             try
             {
                 bool usePw = true;
@@ -231,8 +278,10 @@ namespace UniKey
                     var start = f.Read(5).FromUtf8();
                     if (start == "passw")
                     {
-                        Password = InputBox.GetLine("Enter password:", caption: "Password");
-                        if (Password == null) return;
+                        if (Password == null)
+                            Password = InputBox.GetLine("Enter password:", caption: "Password");
+                        if (Password == null)
+                            return false;
                         var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
                         var key = passwordDeriveBytes.GetBytes(16);
                         var rij = Rijndael.Create();
@@ -244,8 +293,8 @@ namespace UniKey
                         }
                         catch (Exception e)
                         {
-                            DlgMessage.Show("Could not decrypt UniKey.settings.xml:\n{0}\nPassword may be wrong. Exiting.".Fmt(e.Message), "Error", DlgType.Error);
-                            return;
+                            DlgMessage.Show("Could not decrypt UniKey.settings.xml:\n{0}\nPassword may be wrong. Exiting.".Fmt(e.Message), "Error", DlgType.Error, "E&xit UniKey");
+                            return false;
                         }
                     }
                     else
@@ -256,51 +305,17 @@ namespace UniKey
             }
             catch (Exception e)
             {
-                var result = DlgMessage.Show("Could not load UniKey.settings.xml: " + e.Message + "\n\nCreate new file?", "Error", DlgType.Question, "&Yes", "&No");
+                var result = DlgMessage.Show("Could not load UniKey.settings.xml: " + e.Message, "Error", DlgType.Question, "&Create new, blank file", "E&xit UniKey");
                 if (result == 1)
-                    return;
+                    return false;
                 Settings = new Settings();
-                parse("ae>ä;oe>ö;ue>ü;AE>Ä;OE>Ö;UE>Ü;Ae>Ä;Oe>Ö;Ue>Ü;" +
-                    "aue>aue;AUE>AUE;Aue>Aue;eue>eue;EUE>EUE;Eue>Eue;" +
-                    "äue>äue;ÄUE>ÄUE;Äue>Äue;" +
-                    "söben>soeben;SÖBEN>SOEBEN;Söben>Soeben;" +
-                    "zürst>zuerst;ZÜRST>ZUERST;Zürst>Zuerst;" +
-                    "michäl>michael;Michäl>Michael;MICHÄL>MICHAEL;" +
-                    "raffäl>raffael;Raffäl>Raffael;RAFFÄL>RAFFAEL;" +
-                    "raphäl>raphael;Raphäl>Raphael;RAPHÄL>RAPHAEL;" +
-                    "samül>samuel;Samül>Samuel;SAMÜL>SAMUEL;" +
-                    "Getue>Getue;GETUE>GETUE;" +
-                    "Getuet>Getüt;GETUET>GETÜT;" +
-                    "statue>statue;Statue>Statue;STATUE>STATUE;" +
-                    "que>que;QUE>QUE;Que>Que;" +
-                    "sexue>sexue;SEXUE>SEXUE;Sexue>Sexue;" +
-                    "köx>koex;KÖX>KOEX;Köx>Koex;" +
-                    "pöt>poet;PÖT>POET;Pöt>Poet;" +
-                    "pösie>poesie;Pösie>Poesie;PÖSIE>POESIE;" +
-                    "kongrue>kongrue;KONGRUE>KONGRUE;Kongrue>Kongrue;" +
-                    "äro>aero;ÄRO>AERO;Äro>Aero;" +
-                    "düll>duell;DÜLL>DUELL;Düll>Duell;" +  // this also takes care of "individuell" coincidentally
-                    "dütt>duett;DÜTT>DUETT;Dütt>Duett;" +
-                    "aktue>aktue;AKTUE>AKTUE;Aktue>Aktue;" +
-                    "eventue>eventue;EVENTUE>EVENTUE;Eventue>Eventue;" +
-                    "manue>manue;MANUE>MANUE;Manue>Manue;", Settings.Replacers);
-                parse("cx>ĉ;gx>ĝ;hx>ĥ;jx>ĵ;sx>ŝ;ux>ŭ;" +
-                    "CX>Ĉ;GX>Ĝ;HX>Ĥ;JX>Ĵ;SX>Ŝ;UX>Ŭ;" +
-                    "Cx>Ĉ;Gx>Ĝ;Hx>Ĥ;Jx>Ĵ;Sx>Ŝ;Ux>Ŭ", Settings.Replacers);
                 if (!save())
-                    return;
+                    return false;
             }
-
-            GuiThreadInvoker = new Form();
-            var _ = GuiThreadInvoker.Handle;
-            KeyboardListener = new GlobalKeyboardListener();
-            KeyboardListener.HookAllKeys = true;
-            KeyboardListener.KeyDown += keyDown;
-            KeyboardListener.KeyUp += keyUp;
-            Application.Run();
+            return true;
         }
 
-        static ReplaceResult GetReplace(string buffer)
+        private static ReplaceResult GetReplace(string buffer)
         {
             Match m;
 
@@ -332,6 +347,11 @@ namespace UniKey
                 })
                 .OrderByDescending(item => item.Score).AsEnumerable();
             return candidates;
+        }
+
+        static void saveLater()
+        {
+            GuiThreadInvoker.BeginInvoke(new Action(() => { save(); }));
         }
 
         static bool save()
@@ -397,27 +417,29 @@ namespace UniKey
                     f.Close();
                 }
 #endif
-
-                if (e.VirtualKeyCode == Keys.NumLock && Control.IsKeyLocked(Keys.NumLock))
-                    setGridBounds(false, null, Rectangle.Empty, null, false);
-                else if (Control.IsKeyLocked(Keys.NumLock) && _numKeys.Contains(e.VirtualKeyCode))
+                if (Settings.MouseGridEnabled)
                 {
-                    var key =
-                        e.VirtualKeyCode == Keys.Insert ? (Keys.ShiftKey | Keys.NumPad0) :
-                        e.VirtualKeyCode == Keys.End ? (Keys.ShiftKey | Keys.NumPad1) :
-                        e.VirtualKeyCode == Keys.Down ? (Keys.ShiftKey | Keys.NumPad2) :
-                        e.VirtualKeyCode == Keys.PageDown ? (Keys.ShiftKey | Keys.NumPad3) :
-                        e.VirtualKeyCode == Keys.Left ? (Keys.ShiftKey | Keys.NumPad4) :
-                        e.VirtualKeyCode == Keys.Clear ? (Keys.ShiftKey | Keys.NumPad5) :
-                        e.VirtualKeyCode == Keys.Right ? (Keys.ShiftKey | Keys.NumPad6) :
-                        e.VirtualKeyCode == Keys.Home ? (Keys.ShiftKey | Keys.NumPad7) :
-                        e.VirtualKeyCode == Keys.Up ? (Keys.ShiftKey | Keys.NumPad8) :
-                        e.VirtualKeyCode == Keys.PageUp ? (Keys.ShiftKey | Keys.NumPad9) :
-                        e.VirtualKeyCode == Keys.Delete ? (Keys.ShiftKey | Keys.Decimal) : e.VirtualKeyCode;
-                    if (processNumPad(key))
+                    if (e.VirtualKeyCode == Keys.NumLock && Control.IsKeyLocked(Keys.NumLock))
+                        setGridBounds(false, null, Rectangle.Empty, null, false);
+                    else if (Control.IsKeyLocked(Keys.NumLock) && _numKeys.Contains(e.VirtualKeyCode))
                     {
-                        e.Handled = true;
-                        return;
+                        var key =
+                            e.VirtualKeyCode == Keys.Insert ? (Keys.ShiftKey | Keys.NumPad0) :
+                            e.VirtualKeyCode == Keys.End ? (Keys.ShiftKey | Keys.NumPad1) :
+                            e.VirtualKeyCode == Keys.Down ? (Keys.ShiftKey | Keys.NumPad2) :
+                            e.VirtualKeyCode == Keys.PageDown ? (Keys.ShiftKey | Keys.NumPad3) :
+                            e.VirtualKeyCode == Keys.Left ? (Keys.ShiftKey | Keys.NumPad4) :
+                            e.VirtualKeyCode == Keys.Clear ? (Keys.ShiftKey | Keys.NumPad5) :
+                            e.VirtualKeyCode == Keys.Right ? (Keys.ShiftKey | Keys.NumPad6) :
+                            e.VirtualKeyCode == Keys.Home ? (Keys.ShiftKey | Keys.NumPad7) :
+                            e.VirtualKeyCode == Keys.Up ? (Keys.ShiftKey | Keys.NumPad8) :
+                            e.VirtualKeyCode == Keys.PageUp ? (Keys.ShiftKey | Keys.NumPad9) :
+                            e.VirtualKeyCode == Keys.Delete ? (Keys.ShiftKey | Keys.Decimal) : e.VirtualKeyCode;
+                        if (processNumPad(key))
+                        {
+                            e.Handled = true;
+                            return;
+                        }
                     }
                 }
 
@@ -485,7 +507,14 @@ namespace UniKey
 
                     if (_gridForm == null)
                     {
-                        _gridForm = new Form { FormBorderStyle = FormBorderStyle.None, MinimizeBox = false, MaximizeBox = false, StartPosition = FormStartPosition.Manual };
+                        _gridForm = new Form
+                        {
+                            FormBorderStyle = FormBorderStyle.None,
+                            MinimizeBox = false,
+                            MaximizeBox = false,
+                            StartPosition = FormStartPosition.Manual,
+                            ShowInTaskbar = false
+                        };
                         _gridForm.TopMost = true;
                         _gridForm.Paint += (s, e) =>
                         {
