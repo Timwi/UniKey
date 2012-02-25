@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
+using RT.Util.ExtensionMethods;
 
 namespace UniKey
 {
@@ -12,6 +12,37 @@ namespace UniKey
         {
             public string Letters;
             public bool CaseSensitive;
+            public bool AutoCaps;
+
+            public IDictionary<string, string> Pairs { get { if (_pairs == null) generate(); return _pairs; } }
+            public IList<string> Keys { get { if (_keys == null) generate(); return _keys; } }
+
+            private IDictionary<string, string> _pairs;
+            private IList<string> _keys;
+
+            private void generate()
+            {
+                _pairs = Regex.Split(Letters.Replace(" ", "").Trim(), @"\s*\r?\n\s*|\s*,\s*", RegexOptions.Singleline)
+                    .Select(s => s.Split('→'))
+                    .SelectMany(s => s[0].Split('|').Select(s2 => new { Key = s2, Value = s[1] }))
+                    .ToDictionary(a => a.Key, a => a.Value);
+                if (AutoCaps)
+                    foreach (var pair in _pairs.ToArray())
+                    {
+                        if (pair.Value.ToUpper() == pair.Value)
+                            continue;
+                        if (pair.Key.ToUpper() != pair.Key)
+                            _pairs.Add(pair.Key.ToUpper(), pair.Value.ToUpper());
+                        if (pair.Key.Length > 1)
+                        {
+                            var keyUpper = char.ToUpper(pair.Key[0]) + pair.Key.Substring(1);
+                            if (keyUpper != pair.Key && keyUpper != pair.Key.ToUpper())
+                                _pairs.Add(keyUpper, pair.Value.ToUpper());
+                        }
+                    }
+                _pairs = _pairs.AsReadOnly();
+                _keys = _pairs.Keys.OrderByDescending(k => k.Length).ToList().AsReadOnly();
+            }
         }
 
         public static ScriptInfo Cyrillic = new ScriptInfo
@@ -22,6 +53,17 @@ namespace UniKey
                 Jh|JH→Ј, jh→ј, ye→є, Ye|YE→Є, ih→і, yi→ї, Ih|IH→І, Yi|YI→Ї
             ",
             CaseSensitive = true
+        };
+
+        public static ScriptInfo CyrillicNative = new ScriptInfo
+        {
+            Letters = @"
+                a→а, b→б, v→в, g→г, d→д, e→е, yo→ё, zh→ж, z→з, i→и, j→й, k→к, l→л, m→м, n→н, o→о, p→п, r→р, s→с, t→т, u→у, f→ф, x→х, h→х, c→ц, ch→ч, sh→ш, shch→щ, `→ъ, y→ы, '→ь, ye→э, yu→ю, ju→ю, ya→я, ja→я
+                ~→Ъ, ""→Ь
+                yee→є, yi→ї
+            ",
+            CaseSensitive = true,
+            AutoCaps = true
         };
 
         public static ScriptInfo Greek = new ScriptInfo
@@ -58,23 +100,18 @@ namespace UniKey
 
         public static string Convert(ScriptInfo script, string input)
         {
-            var pairs = Regex.Split(script.Letters.Replace(" ", "").Trim(), @"\s*\r?\n\s*|\s*,\s*", RegexOptions.Singleline)
-                .Select(s => s.Split('→'))
-                .SelectMany(s => s[0].Split('|').Select(s2 => new { Key = s2, Value = s[1] }))
-                .ToDictionary(a => a.Key, a => a.Value);
-            var keys = pairs.Keys.OrderByDescending(k => k.Length).ToList();
             var output = "";
             var comparison = script.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
             while (input.Length > 0)
             {
                 int? len = null;
-                foreach (var key in keys)
+                foreach (var key in script.Keys)
                 {
                     if (input.StartsWith(key, comparison))
                     {
                         len = key.Length;
-                        output += pairs[key];
+                        output += script.Pairs[key];
                         break;
                     }
                 }

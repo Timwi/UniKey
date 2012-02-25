@@ -93,6 +93,9 @@ namespace UniKey
             new CommandInfo(@"\{cp( .)?\}$", @"{cp <character>}, {cp}", @"Outputs the hexadecimal Unicode codepoint value of the specified character, or the first character from the clipboard if none specified, as keystrokes.",
                 m => new ReplaceResult(m.Length, (m.Groups[1].Length > 0 ? char.ConvertToUtf32(m.Groups[1].Value, 1) : char.ConvertToUtf32(Clipboard.GetText(), 0)).ToString("X4"))),
 
+            //new CommandInfo(@"([^\]]+)(\W)$", "<text>", @"Converts all text to Cyrillic when Scroll Lock is on.",
+            //    m => Control.IsKeyLocked(Keys.Scroll) ? new ReplaceResult(m.Length, Conversions.Convert(Conversions.CyrillicNative, m.Groups[1].Value) + m.Groups[2].Value) : null),
+
             new CommandInfo(@"\{c ([^\{\}]+)\}$", "{c <text>}", @"Converts the specified text to Cyrillic.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Cyrillic, m.Groups[1].Value))),
             new CommandInfo(@"\{el ([^\{\}]+)\}$", "{el <text>}", @"Converts the specified text to Greek.",
@@ -716,8 +719,9 @@ namespace UniKey
                 bool alt = Pressed.Contains(Keys.LMenu) || Pressed.Contains(Keys.RMenu);
                 bool ctrl = Pressed.Contains(Keys.LControlKey) || Pressed.Contains(Keys.RControlKey);
                 bool shift = Pressed.Contains(Keys.LShiftKey) || Pressed.Contains(Keys.RShiftKey);
+                bool win = Pressed.Contains(Keys.LWin) || Pressed.Contains(Keys.RWin);
 
-                if (LastBufferCheck < Buffer.Length && !alt && !ctrl && !shift)
+                if (LastBufferCheck < Buffer.Length && !alt && !ctrl && !shift && !win)
                 {
                     string oldBuffer = Buffer;
                     while (LastBufferCheck < Buffer.Length)
@@ -761,8 +765,9 @@ namespace UniKey
 
         private static Keys[] _emptyKeys = Ut.NewArray<Keys>(Keys.LControlKey, Keys.RControlKey, Keys.Escape,
                             Keys.Enter, Keys.Return, Keys.Tab,
-                            Keys.LMenu, Keys.RMenu, Keys.Up,
-                            Keys.Down, Keys.Left, Keys.Right,
+                            Keys.LMenu, Keys.RMenu, Keys.LWin, Keys.RWin,
+                            Keys.Scroll,
+                            Keys.Up, Keys.Down, Keys.Left, Keys.Right,
                             Keys.End, Keys.Home, Keys.PageDown, Keys.PageUp,
                             Keys.F1, Keys.F2, Keys.F3, Keys.F4, Keys.F5, Keys.F6, Keys.F7, Keys.F8, Keys.F9, Keys.F10, Keys.F11, Keys.F12);
 
