@@ -22,6 +22,7 @@ namespace UniKey
     static class Program
     {
         static Settings Settings;
+        static MachineSettings MachineSettings;
         static GlobalKeyboardListener KeyboardListener;
         static List<Keys> Pressed = new List<Keys>();
         static bool Processing = false;
@@ -246,7 +247,7 @@ namespace UniKey
                     Application.Exit();
             };
 
-            var fsw = new FileSystemWatcher(PathUtil.AppPath, "UniKey.settings.xml")
+            var fsw = new FileSystemWatcher(Path.GetDirectoryName(MachineSettings.SettingsPathExpanded), Path.GetFileName(MachineSettings.SettingsPathExpanded))
             {
                 IncludeSubdirectories = false,
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
@@ -273,10 +274,13 @@ namespace UniKey
 
         private static bool loadSettings()
         {
+            SettingsUtil.LoadSettings(out MachineSettings);
+            MachineSettings.SaveQuiet();
+            again:
             try
             {
                 bool usePw = true;
-                using (var f = File.Open(PathUtil.AppPathCombine(@"UniKey.settings.xml"), FileMode.Open))
+                using (var f = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Open))
                 {
                     var start = f.Read(5).FromUtf8();
                     if (start == "passw")
@@ -296,7 +300,7 @@ namespace UniKey
                         }
                         catch (Exception e)
                         {
-                            DlgMessage.Show("Could not decrypt UniKey.settings.xml:\n{0}\nPassword may be wrong. Exiting.".Fmt(e.Message), "Error", DlgType.Error, "E&xit UniKey");
+                            DlgMessage.Show("Could not decrypt {0}:\n{1}\nPassword may be wrong. Exiting.".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Error, "E&xit UniKey");
                             return false;
                         }
                     }
@@ -304,13 +308,25 @@ namespace UniKey
                         usePw = false;
                 }
                 if (!usePw)
-                    Settings = XmlClassify.LoadObjectFromXmlFile<Settings>(PathUtil.AppPathCombine(@"UniKey.settings.xml"));
+                    Settings = XmlClassify.LoadObjectFromXmlFile<Settings>(MachineSettings.SettingsPathExpanded);
             }
             catch (Exception e)
             {
-                var result = DlgMessage.Show("Could not load UniKey.settings.xml: " + e.Message, "Error", DlgType.Question, "&Create new, blank file", "E&xit UniKey");
-                if (result == 1)
+                again2:
+                var result = DlgMessage.Show("Could not load {0}: {1}".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Question, "&Create new file here", "&Browse for new/existing file", "E&xit UniKey");
+                if (result == 2)
                     return false;
+                if (result == 1)
+                {
+                    var dlg = new OpenFileDialog();
+                    dlg.Title = "Choose the location of your settings file";
+                    dlg.CheckPathExists = dlg.CheckFileExists = false;
+                    if (dlg.ShowDialog() != DialogResult.OK)
+                        goto again2;
+                    MachineSettings.SettingsPathExpanded = dlg.FileName;
+                    MachineSettings.SaveLoud();
+                    goto again;
+                }
                 Settings = new Settings();
                 if (!save())
                     return false;
@@ -361,7 +377,6 @@ namespace UniKey
         {
             try
             {
-                var fileName = PathUtil.AppPathCombine("UniKey.settings.xml");
                 if (Password != null)
                 {
                     var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
@@ -369,7 +384,7 @@ namespace UniKey
                     var rij = Rijndael.Create();
 
                     var rijEnc = rij.CreateEncryptor(key, _iv);
-                    using (var outputStream = File.Open(fileName, FileMode.Create))
+                    using (var outputStream = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Create))
                     {
                         outputStream.Write("passw".ToUtf8());
                         using (var cStream = new CryptoStream(outputStream, rijEnc, CryptoStreamMode.Write))
@@ -377,11 +392,11 @@ namespace UniKey
                     }
                 }
                 else
-                    XmlClassify.SaveObjectToXmlFile(Settings, fileName);
+                    XmlClassify.SaveObjectToXmlFile(Settings, MachineSettings.SettingsPathExpanded);
             }
             catch (Exception e)
             {
-                DlgMessage.Show("Error saving UniKey.settings.xml: " + e.Message, "Error", DlgType.Error, "OK");
+                DlgMessage.Show("Error saving {0}: {1}".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Error, "OK");
                 return false;
             }
             return true;
