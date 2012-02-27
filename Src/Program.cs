@@ -105,6 +105,8 @@ namespace UniKey
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Hiragana, m.Groups[1].Value))),
             new CommandInfo(@"\{ka ([^\{\}]+)\}$", "{ka <text>}", @"Converts the specified text to Katakana.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Katakana, m.Groups[1].Value))),
+            new CommandInfo(@"\{sc ([^\{\}]+)\}$", "{sc <text>}", @"Converts the specified text (except f and q) to small caps.",
+                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.SmallCaps, m.Groups[1].Value))),
 
             new CommandInfo(@"\{set mousegrid (on|off)\}", "{set mousegrid <on/off>}",
                 @"Enables or disables the mouse grid feature. The mouse grid is activated by turning Num Lock on and then operated using the keys on the NumPad.",

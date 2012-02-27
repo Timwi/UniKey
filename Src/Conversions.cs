@@ -98,6 +98,12 @@ namespace UniKey
             CaseSensitive = false
         };
 
+        public static ScriptInfo SmallCaps = new ScriptInfo
+        {
+            Letters = @"a→ᴀ, b→ʙ, c→ᴄ, d→ᴅ, e→ᴇ, g→ɢ, h→ʜ, i→ɪ, j→ᴊ, k→ᴋ, l→ʟ, m→ᴍ, n→ɴ, o→ᴏ, p→ᴘ, r→ʀ, t→ᴛ, u→ᴜ, v→ᴠ, w→ᴡ, y→ʏ, z→ᴢ", 
+            CaseSensitive = true
+        };
+
         public static string Convert(ScriptInfo script, string input)
         {
             var output = "";
