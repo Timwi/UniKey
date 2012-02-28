@@ -74,13 +74,13 @@ namespace UniKey
                 m => findAll(m.Groups[1].Value, m.Length)),
 
             new CommandInfo(@"\{html\}$", @"{html}", @"HTML-escapes the current contents of the clipboard and outputs the result as keystrokes.",
-                m => new ReplaceResult(m.Length, Clipboard.GetText().HtmlEscape())),
+                m => new ReplaceResult(m.Length, ClipboardGetText().HtmlEscape())),
 
             new CommandInfo(@"\{url\}$", @"{url}", @"URL-escapes the current contents of the clipboard and outputs the result as keystrokes.",
-                m => new ReplaceResult(m.Length, Clipboard.GetText().UrlEscape())),
+                m => new ReplaceResult(m.Length, ClipboardGetText().UrlEscape())),
 
             new CommandInfo(@"\{unurl\}$", @"{unurl}", @"Reverses URL escaping in the current contents of the clipboard and outputs the result as keystrokes.",
-                m => new ReplaceResult(m.Length, Clipboard.GetText().UrlUnescape())),
+                m => new ReplaceResult(m.Length, ClipboardGetText().UrlUnescape())),
 
             new CommandInfo(@"\{u ([0-9a-f]+)\}$", @"{u <hexadecimal codepoint>}", @"Outputs the specified Unicode character as a keystroke.",
                 m =>
@@ -92,10 +92,10 @@ namespace UniKey
                 }),
 
             new CommandInfo(@"\{cp( .)?\}$", @"{cp <character>}, {cp}", @"Outputs the hexadecimal Unicode codepoint value of the specified character, or the first character from the clipboard if none specified, as keystrokes.",
-                m => new ReplaceResult(m.Length, (m.Groups[1].Length > 0 ? char.ConvertToUtf32(m.Groups[1].Value, 1) : char.ConvertToUtf32(Clipboard.GetText(), 0)).ToString("X4"))),
+                m => new ReplaceResult(m.Length, (m.Groups[1].Length > 0 ? char.ConvertToUtf32(m.Groups[1].Value, 1) : char.ConvertToUtf32(ClipboardGetText(), 0)).ToString("X4"))),
 
-            //new CommandInfo(@"([^\]]+)(\W)$", "<text>", @"Converts all text to Cyrillic when Scroll Lock is on.",
-            //    m => Control.IsKeyLocked(Keys.Scroll) ? new ReplaceResult(m.Length, Conversions.Convert(Conversions.CyrillicNative, m.Groups[1].Value) + m.Groups[2].Value) : null),
+            //new CommandInfo(@"([a-zA-Z`'~""@¬]+)([^a-zA-Z`'~""@¬])$", "<text>", @"Converts all text to Cyrillic when Scroll Lock is on.",
+                //    m => Control.IsKeyLocked(Keys.Scroll) ? new ReplaceResult(m.Length, Conversions.Convert(Conversions.RussianNative, m.Groups[1].Value) + m.Groups[2].Value) : null),
 
             new CommandInfo(@"\{c ([^\{\}]+)\}$", "{c <text>}", @"Converts the specified text to Cyrillic.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Cyrillic, m.Groups[1].Value))),
@@ -105,8 +105,6 @@ namespace UniKey
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Hiragana, m.Groups[1].Value))),
             new CommandInfo(@"\{ka ([^\{\}]+)\}$", "{ka <text>}", @"Converts the specified text to Katakana.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Katakana, m.Groups[1].Value))),
-            new CommandInfo(@"\{sc ([^\{\}]+)\}$", "{sc <text>}", @"Converts the specified text (except f and q) to small caps.",
-                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.SmallCaps, m.Groups[1].Value))),
 
             new CommandInfo(@"\{set mousegrid (on|off)\}", "{set mousegrid <on/off>}",
                 @"Enables or disables the mouse grid feature. The mouse grid is activated by turning Num Lock on and then operated using the keys on the NumPad.",
@@ -117,6 +115,16 @@ namespace UniKey
                     return new ReplaceResult(m.Length, "Mouse grid now {0}.".Fmt(m.Groups[1].Value));
                 })
         );
+
+        private static string ClipboardGetText()
+        {
+            return Ut.OnExceptionRetry(() => Clipboard.GetText(), 10, 100);
+        }
+
+        private static void ClipboardSetText(string text)
+        {
+            Ut.OnExceptionRetry(() => { Clipboard.SetText(text); }, 10, 100);
+        }
 
         private static ReplaceResult del(string key, int length)
         {
@@ -129,7 +137,7 @@ namespace UniKey
 
         private static ReplaceResult add(string key, int length)
         {
-            var newRepl = Clipboard.GetText();
+            var newRepl = ClipboardGetText();
             string existing;
             if (Settings.Replacers.TryGetValue(key, out existing))
             {
@@ -176,9 +184,9 @@ namespace UniKey
                 .Select(si => char.ConvertFromUtf32(si.CodePoint) + "    " + si.GetReplacer(Settings.Replacers) + "    0x" + si.CodePoint.ToString("X") + "    " + si.Name + Environment.NewLine)
                 .JoinString();
             if (candidatesStr.Length > 0)
-                Clipboard.SetText(candidatesStr);
+                ClipboardSetText(candidatesStr);
             else
-                Clipboard.SetText("No character found matching: " + words.JoinString(" "));
+                ClipboardSetText("No character found matching: " + words.JoinString(" "));
             return new ReplaceResult(length, "");
         }
 
@@ -282,33 +290,39 @@ namespace UniKey
             try
             {
                 bool usePw = true;
-                using (var f = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Open))
+                bool result = Ut.WaitSharingVio(() =>
                 {
-                    var start = f.Read(5).FromUtf8();
-                    if (start == "passw")
+                    using (var f = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Open))
                     {
-                        if (Password == null)
-                            Password = InputBox.GetLine("Enter password:", caption: "Password");
-                        if (Password == null)
-                            return false;
-                        var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
-                        var key = passwordDeriveBytes.GetBytes(16);
-                        var rij = Rijndael.Create();
-                        var rijDec = rij.CreateDecryptor(key, _iv);
-                        try
+                        var start = f.Read(5).FromUtf8();
+                        if (start == "passw")
                         {
-                            using (var cStream = new CryptoStream(f, rijDec, CryptoStreamMode.Read))
-                                Settings = XmlClassify.ObjectFromXElement<Settings>(XElement.Parse(cStream.ReadAllBytes().FromUtf8()));
+                            if (Password == null)
+                                Password = InputBox.GetLine("Enter password:", caption: "Password");
+                            if (Password == null)
+                                return false;
+                            var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
+                            var key = passwordDeriveBytes.GetBytes(16);
+                            var rij = Rijndael.Create();
+                            var rijDec = rij.CreateDecryptor(key, _iv);
+                            try
+                            {
+                                using (var cStream = new CryptoStream(f, rijDec, CryptoStreamMode.Read))
+                                    Settings = XmlClassify.ObjectFromXElement<Settings>(XElement.Parse(cStream.ReadAllBytes().FromUtf8()));
+                            }
+                            catch (Exception e)
+                            {
+                                DlgMessage.Show("Could not decrypt {0}:\n{1}\nPassword may be wrong. Exiting.".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Error, "E&xit UniKey");
+                                return false;
+                            }
                         }
-                        catch (Exception e)
-                        {
-                            DlgMessage.Show("Could not decrypt {0}:\n{1}\nPassword may be wrong. Exiting.".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Error, "E&xit UniKey");
-                            return false;
-                        }
+                        else
+                            usePw = false;
                     }
-                    else
-                        usePw = false;
-                }
+                    return true;
+                });
+                if (!result)
+                    return false;
                 if (!usePw)
                     Settings = XmlClassify.LoadObjectFromXmlFile<Settings>(MachineSettings.SettingsPathExpanded);
             }
@@ -379,22 +393,25 @@ namespace UniKey
         {
             try
             {
-                if (Password != null)
+                Ut.WaitSharingVio(() =>
                 {
-                    var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
-                    var key = passwordDeriveBytes.GetBytes(16);
-                    var rij = Rijndael.Create();
-
-                    var rijEnc = rij.CreateEncryptor(key, _iv);
-                    using (var outputStream = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Create))
+                    if (Password != null)
                     {
-                        outputStream.Write("passw".ToUtf8());
-                        using (var cStream = new CryptoStream(outputStream, rijEnc, CryptoStreamMode.Write))
-                            cStream.Write(XmlClassify.ObjectToXElement(Settings).ToString().ToUtf8());
+                        var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
+                        var key = passwordDeriveBytes.GetBytes(16);
+                        var rij = Rijndael.Create();
+
+                        var rijEnc = rij.CreateEncryptor(key, _iv);
+                        using (var outputStream = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Create))
+                        {
+                            outputStream.Write("passw".ToUtf8());
+                            using (var cStream = new CryptoStream(outputStream, rijEnc, CryptoStreamMode.Write))
+                                cStream.Write(XmlClassify.ObjectToXElement(Settings).ToString().ToUtf8());
+                        }
                     }
-                }
-                else
-                    XmlClassify.SaveObjectToXmlFile(Settings, MachineSettings.SettingsPathExpanded);
+                    else
+                        XmlClassify.SaveObjectToXmlFile(Settings, MachineSettings.SettingsPathExpanded);
+                });
             }
             catch (Exception e)
             {

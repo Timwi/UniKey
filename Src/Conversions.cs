@@ -55,12 +55,11 @@ namespace UniKey
             CaseSensitive = true
         };
 
-        public static ScriptInfo CyrillicNative = new ScriptInfo
+        public static ScriptInfo RussianNative = new ScriptInfo
         {
             Letters = @"
-                a→а, b→б, v→в, g→г, d→д, e→е, yo→ё, zh→ж, z→з, i→и, j→й, k→к, l→л, m→м, n→н, o→о, p→п, r→р, s→с, t→т, u→у, f→ф, x→х, h→х, c→ц, ch→ч, sh→ш, shch→щ, `→ъ, y→ы, '→ь, ye→э, yu→ю, ju→ю, ya→я, ja→я
-                ~→Ъ, ""→Ь
-                yee→є, yi→ї
+                a→а, b→б, v→в, g→г, d→д, e→е, yo→ё, zh→ж, z→з, i→и, j→й, k→к, l→л, m→м, n→н, o→о, p→п, r→р, s→с, t→т, u→у, f→ф, x→х, h→х, c→ц, ch→ч, sh→ш, shch→щ, `→ъ, y→ы, '→ь, eh→э, yu→ю, ju→ю, ya→я, ja→я
+                ~→Ъ, ""→Ь, ¬→Ъ, @→Ь
             ",
             CaseSensitive = true,
             AutoCaps = true
