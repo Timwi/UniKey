@@ -95,7 +95,7 @@ namespace UniKey
                 m => new ReplaceResult(m.Length, (m.Groups[1].Length > 0 ? char.ConvertToUtf32(m.Groups[1].Value, 1) : char.ConvertToUtf32(ClipboardGetText(), 0)).ToString("X4"))),
 
             //new CommandInfo(@"([a-zA-Z`'~""@¬]+)([^a-zA-Z`'~""@¬])$", "<text>", @"Converts all text to Cyrillic when Scroll Lock is on.",
-                //    m => Control.IsKeyLocked(Keys.Scroll) ? new ReplaceResult(m.Length, Conversions.Convert(Conversions.RussianNative, m.Groups[1].Value) + m.Groups[2].Value) : null),
+            //    m => Control.IsKeyLocked(Keys.Scroll) ? new ReplaceResult(m.Length, Conversions.Convert(Conversions.RussianNative, m.Groups[1].Value) + m.Groups[2].Value) : null),
 
             new CommandInfo(@"\{c ([^\{\}]+)\}$", "{c <text>}", @"Converts the specified text to Cyrillic.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Cyrillic, m.Groups[1].Value))),
@@ -260,19 +260,18 @@ namespace UniKey
             var fsw = new FileSystemWatcher(Path.GetDirectoryName(MachineSettings.SettingsPathExpanded), Path.GetFileName(MachineSettings.SettingsPathExpanded))
             {
                 IncludeSubdirectories = false,
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
+                NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
             };
 
-            FileSystemEventHandler scheduleReloadSettings = delegate
+            Action scheduleReloadSettings = () =>
             {
-                GuiThreadInvoker.BeginInvoke(new Action(() =>
-                {
-                    reloadSettingsFileTimer.Enabled = false;
-                    reloadSettingsFileTimer.Enabled = true;
-                }));
+                reloadSettingsFileTimer.Enabled = false;
+                reloadSettingsFileTimer.Enabled = true;
             };
-            fsw.Changed += scheduleReloadSettings;
-            fsw.Created += scheduleReloadSettings;
+            fsw.Changed += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
+            fsw.Created += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
+            fsw.Deleted += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
+            fsw.Renamed += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
             fsw.EnableRaisingEvents = true;
 
             KeyboardListener = new GlobalKeyboardListener();
