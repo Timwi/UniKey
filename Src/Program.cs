@@ -786,6 +786,11 @@ namespace UniKey
                         int i = 0;
                         while (i < Buffer.Length && i < oldBuffer.Length && Buffer[i] == oldBuffer[i])
                             i++;
+                        if (e.VirtualKeyCode == Keys.LShiftKey || e.VirtualKeyCode == Keys.RShiftKey)
+                        {
+                            e.Handled = true;
+                            Ut.SendKeystrokes(new object[] { Tuple.Create(e.VirtualKeyCode, true) });
+                        }
                         Ut.SendKeystrokes(Enumerable.Repeat<object>(Keys.Back, oldBuffer.Length - i).Concat(Buffer.Substring(i).Cast<object>()));
                     }
                 }
