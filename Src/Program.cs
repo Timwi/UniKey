@@ -99,7 +99,7 @@ namespace UniKey
 
             new CommandInfo(@"\{c ([^\{\}]+)\}$", "{c <text>}", @"Converts the specified text to Cyrillic.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Cyrillic, m.Groups[1].Value))),
-            new CommandInfo(@"\{el ([^\{\}]+)\}$", "{el <text>}", @"Converts the specified text to Greek.",
+            new CommandInfo(@"\{g ([^\{\}]+)\}$", "{g <text>}", @"Converts the specified text to Greek.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Greek, m.Groups[1].Value))),
             new CommandInfo(@"\{hi ([^\{\}]+)\}$", "{hi <text>}", @"Converts the specified text to Hiragana.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Hiragana, m.Groups[1].Value))),
@@ -786,12 +786,15 @@ namespace UniKey
                         int i = 0;
                         while (i < Buffer.Length && i < oldBuffer.Length && Buffer[i] == oldBuffer[i])
                             i++;
+                        var keystrokes = new List<object>(oldBuffer.Length - i + Buffer.Length - i + 1);
                         if (e.VirtualKeyCode == Keys.LShiftKey || e.VirtualKeyCode == Keys.RShiftKey)
                         {
                             e.Handled = true;
-                            Ut.SendKeystrokes(new object[] { Tuple.Create(e.VirtualKeyCode, true) });
+                            keystrokes.Add(Tuple.Create(e.VirtualKeyCode, true));
                         }
-                        Ut.SendKeystrokes(Enumerable.Repeat<object>(Keys.Back, oldBuffer.Length - i).Concat(Buffer.Substring(i).Cast<object>()));
+                        keystrokes.AddRange(Enumerable.Repeat<object>(Keys.Back, oldBuffer.Length - i));
+                        keystrokes.AddRange(Buffer.Substring(i).Cast<object>());
+                        Ut.SendKeystrokes(keystrokes);
                     }
                 }
             }
