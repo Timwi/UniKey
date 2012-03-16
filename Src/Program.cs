@@ -181,7 +181,8 @@ namespace UniKey
             if (words == null || words.Length < 1)
                 return new ReplaceResult(length, "No search terms given.");
             var candidatesStr = FindCharacters(words)
-                .Select(si => char.ConvertFromUtf32(si.CodePoint) + "    " + si.GetReplacer(Settings.Replacers) + "    0x" + si.CodePoint.ToString("X") + "    " + si.Name + Environment.NewLine)
+                .Select(si => (char) (0x202a /* left-to-right override */) + char.ConvertFromUtf32(si.CodePoint) + (char) (0x202c /* pop directional formatting */) + "    " + 
+                                       si.GetReplacer(Settings.Replacers) + "    0x" + si.CodePoint.ToString("X") + "    " + si.Name + Environment.NewLine)
                 .JoinString();
             if (candidatesStr.Length > 0)
                 ClipboardSetText(candidatesStr);
