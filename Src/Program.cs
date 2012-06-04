@@ -181,7 +181,7 @@ namespace UniKey
             if (words == null || words.Length < 1)
                 return new ReplaceResult(length, "No search terms given.");
             var candidatesStr = FindCharacters(words)
-                .Select(si => (char) (0x202a /* left-to-right override */) + char.ConvertFromUtf32(si.CodePoint) + (char) (0x202c /* pop directional formatting */) + "    " + 
+                .Select(si => (char) (0x202a /* left-to-right override */) + char.ConvertFromUtf32(si.CodePoint) + (char) (0x202c /* pop directional formatting */) + "    " +
                                        si.GetReplacer(Settings.Replacers) + "    0x" + si.CodePoint.ToString("X") + "    " + si.Name + Environment.NewLine)
                 .JoinString();
             if (candidatesStr.Length > 0)
@@ -454,7 +454,7 @@ namespace UniKey
                     f.Close();
                 }
 #endif
-                if (Settings.MouseGridEnabled)
+                if (Settings.MouseGridEnabled && !Pressed.Contains(Keys.LControlKey) && !Pressed.Contains(Keys.RControlKey))
                 {
                     if (e.VirtualKeyCode == Keys.NumLock && Control.IsKeyLocked(Keys.NumLock))
                         setGridBounds(false, null, Rectangle.Empty, null, false);
