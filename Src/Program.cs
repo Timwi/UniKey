@@ -290,7 +290,7 @@ namespace UniKey
             try
             {
                 bool usePw = true;
-                bool result = Ut.WaitSharingVio(() =>
+                bool result = Ut.OnExceptionRetry(() => Ut.WaitSharingVio(() =>
                 {
                     using (var f = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Open))
                     {
@@ -320,7 +320,7 @@ namespace UniKey
                             usePw = false;
                     }
                     return true;
-                });
+                }, maximum: TimeSpan.FromSeconds(20)), attempts: 3, delayMs: 3 * 1000);
                 if (!result)
                     return false;
                 if (!usePw)
@@ -329,9 +329,11 @@ namespace UniKey
             catch (Exception e)
             {
                 again2:
-                var result = DlgMessage.Show("Could not load {0}: {1}".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Question, "&Create new file here", "&Browse for new/existing file", "E&xit UniKey");
-                if (result == 2)
+                var result = DlgMessage.Show("Could not load {0}: {1}".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Question, "&Create new file here", "&Browse for new/existing file", "&Retry", "E&xit UniKey");
+                if (result == 3)
                     return false;
+                if (result == 2)
+                    goto again;
                 if (result == 1)
                 {
                     var dlg = new OpenFileDialog();
@@ -391,31 +393,36 @@ namespace UniKey
 
         static bool save()
         {
+            retry:
             try
             {
-                Ut.WaitSharingVio(() =>
+                Ut.OnExceptionRetry(() =>
                 {
-                    if (Password != null)
+                    Ut.WaitSharingVio(() =>
                     {
-                        var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
-                        var key = passwordDeriveBytes.GetBytes(16);
-                        var rij = Rijndael.Create();
-
-                        var rijEnc = rij.CreateEncryptor(key, _iv);
-                        using (var outputStream = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Create))
+                        if (Password != null)
                         {
-                            outputStream.Write("passw".ToUtf8());
-                            using (var cStream = new CryptoStream(outputStream, rijEnc, CryptoStreamMode.Write))
-                                cStream.Write(XmlClassify.ObjectToXElement(Settings).ToString().ToUtf8());
+                            var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
+                            var key = passwordDeriveBytes.GetBytes(16);
+                            var rij = Rijndael.Create();
+
+                            var rijEnc = rij.CreateEncryptor(key, _iv);
+                            using (var outputStream = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Create))
+                            {
+                                outputStream.Write("passw".ToUtf8());
+                                using (var cStream = new CryptoStream(outputStream, rijEnc, CryptoStreamMode.Write))
+                                    cStream.Write(XmlClassify.ObjectToXElement(Settings).ToString().ToUtf8());
+                            }
                         }
-                    }
-                    else
-                        XmlClassify.SaveObjectToXmlFile(Settings, MachineSettings.SettingsPathExpanded);
-                });
+                        else
+                            XmlClassify.SaveObjectToXmlFile(Settings, MachineSettings.SettingsPathExpanded);
+                    }, TimeSpan.FromSeconds(20));
+                }, attempts: 3, delayMs: 5 * 1000);
             }
             catch (Exception e)
             {
-                DlgMessage.Show("Error saving {0}: {1}".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Error, "OK");
+                if (DlgMessage.Show("Error saving {0}: {1}".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Error, "&Retry", "&Ignore") == 0)
+                    goto retry;
                 return false;
             }
             return true;
