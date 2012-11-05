@@ -182,7 +182,7 @@ namespace UniKey
                 return new ReplaceResult(length, "No search terms given.");
             var candidatesStr = FindCharacters(words)
                 .Select(si => (char) (0x202a /* left-to-right override */) + char.ConvertFromUtf32(si.CodePoint) + (char) (0x202c /* pop directional formatting */) + "    " +
-                                       si.GetReplacer(Settings.Replacers) + "    0x" + si.CodePoint.ToString("X") + "    " + si.Name + Environment.NewLine)
+                                       si.GetReplacer(Settings.Replacers) + "    U+" + si.CodePoint.ToString("X4") + "    " + si.Name + Environment.NewLine)
                 .JoinString();
             if (candidatesStr.Length > 0)
                 ClipboardSetText(candidatesStr);
@@ -369,7 +369,7 @@ namespace UniKey
         private static IEnumerable<SearchItem> FindCharacters(string[] words)
         {
             var candidates = UnicodeData
-                .Where(kvp => words.All(w => kvp.Value.Contains(w)))
+                .Where(kvp => words.All(w => kvp.Value.Contains(w) || kvp.Key.ToString("X4").Contains(w)))
                 .Select(kvp =>
                 {
                     var split = kvp.Value.Split(' ');
@@ -379,6 +379,7 @@ namespace UniKey
                         Name = kvp.Value,
                         Score =
                             split.All(words.Contains) && words.All(split.Contains) ? 1000 :
+                            words.Length == 1 && kvp.Key.ToString("X4").Contains(words[0]) ? 999 :
                             split.Where(s => s.Length > 0).Select(s => s.Trim()).Sum(w => words.Contains(w) ? 20 : words.Any(w2 => w.Contains(w2)) ? 0 : -2)
                     };
                 })
