@@ -80,7 +80,7 @@ namespace UniKey
                 m => new ReplaceResult(m.Length, ClipboardGetText().UrlEscape())),
 
             new CommandInfo(@"\{unurl\}$", @"{unurl}", @"Reverses URL escaping in the current contents of the clipboard and outputs the result as keystrokes.",
-                m => new ReplaceResult(m.Length, ClipboardGetText().UrlUnescape())),
+                m => new ReplaceResult(m.Length, Ut.OnExceptionDefault(() => ClipboardGetText().UrlUnescape(), "The string contains invalid URL encoding."))),
 
             new CommandInfo(@"\{u ([0-9a-f]+)\}$", @"{u <hexadecimal codepoint>}", @"Outputs the specified Unicode character as a keystroke.",
                 m =>
