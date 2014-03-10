@@ -36,42 +36,42 @@ namespace UniKey
 
         static CommandInfo[] Commands = Ut.NewArray
         (
-            new CommandInfo(@"\{help\}$", "{help}", @"Displays this help screen.", m => help(m.Length)),
+            new CommandInfo(@"\{help\}$", "*{{help}}*", @"Displays this help screen.", m => help(m.Length)),
 
-            new CommandInfo(@"\{add ([^\{\}]+|\{[^\{\}]+\})\}$", "{add <key>}",
-                @"Adds a new entry to the replacements dictionary. The key is specified, the replacement value is taken from the clipboard. The key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'.",
+            new CommandInfo(@"\{add ([^\{\}]+|\{[^\{\}]+\})\}$", "*{{add */key/*}}*",
+                @"Adds a new entry to the replacements dictionary. The key is specified, the replacement value is taken from the clipboard. The key may be surrounded by curly braces, but may otherwise not contain any *{{* or *}}*.",
                 m => add(m.Groups[1].Value, m.Length)),
 
-            new CommandInfo(@"\{ren ([^ \{\}]+) ([^ \{\}]+)\}$", "{ren <oldkey> <newkey>}",
-                @"Changes the key for an existing replacement rule. Each key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'. (Note this command does not work for keys containing spaces; you must use {del <key>} followed by {add <key>} for those.)",
+            new CommandInfo(@"\{ren ([^ \{\}]+) ([^ \{\}]+)\}$", "*{{ren */oldkey/* */newkey/*}}*",
+                @"Changes the key for an existing replacement rule. Each key may be surrounded by curly braces, but may otherwise not contain any *{{* or *}}*. (Note this command does not work for keys containing spaces; you must use *{{del */key/*}}* followed by *{{add */key/*}}* for those.)",
                 m => ren(m.Groups[1].Value, m.Groups[2].Value, m.Length)),
 
-            new CommandInfo(@"\{del ([^\{\}]+|\{[^\{\}]+\})\}$", "{del <key>}",
-                @"Deletes the specified key from the replacements dictionary. The key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'.",
+            new CommandInfo(@"\{del ([^\{\}]+|\{[^\{\}]+\})\}$", "*{{del */key/*}}*",
+                @"Deletes the specified key from the replacements dictionary. The key may be surrounded by curly braces, but may otherwise not contain any *{{* or *}}*.",
                 m => del(m.Groups[1].Value, m.Length)),
 
-            new CommandInfo(@"\{f\s+([^\{\}]+?)\s*\}$", @"{f <words>}",
+            new CommandInfo(@"\{f\s+([^\{\}]+?)\s*\}$", @"*{{f */words/*}}*",
                 @"Searches for a Unicode character using the specified keywords and outputs the best match.",
                 m => find(m.Groups[1].Value, m.Length)),
 
-            new CommandInfo(@"\{fa\s+([^\{\}]+?)\s*\}$", @"{fa <words>}",
+            new CommandInfo(@"\{fa\s+([^\{\}]+?)\s*\}$", @"*{{fa */words/*}}*",
                 @"Finds all Unicode characters whose names contain the specified words, and places a tabular list of those characters in the clipboard.",
                 m => findAll(m.Groups[1].Value, m.Length)),
 
-            new CommandInfo(@"\{r\}$", @"{r}",
+            new CommandInfo(@"\{re\}$", @"*{{re}}*",
                 @"List all the replacement rules that generate as output the text that is currently in the clipboard.",
                 m => findRules(m.Length)),
 
-            new CommandInfo(@"\{html\}$", @"{html}", @"HTML-escapes the current contents of the clipboard and outputs the result as keystrokes.",
+            new CommandInfo(@"\{html\}$", @"*{{html}}*", @"HTML-escapes the current contents of the clipboard and outputs the result as keystrokes.",
                 m => new ReplaceResult(m.Length, ClipboardGetText().HtmlEscape())),
 
-            new CommandInfo(@"\{url\}$", @"{url}", @"URL-escapes the current contents of the clipboard and outputs the result as keystrokes.",
+            new CommandInfo(@"\{url\}$", @"*{{url}}*", @"URL-escapes the current contents of the clipboard and outputs the result as keystrokes.",
                 m => new ReplaceResult(m.Length, ClipboardGetText().UrlEscape())),
 
-            new CommandInfo(@"\{unurl\}$", @"{unurl}", @"Reverses URL escaping in the current contents of the clipboard and outputs the result as keystrokes.",
+            new CommandInfo(@"\{unurl\}$", @"*{{unurl}}*", @"Reverses URL escaping in the current contents of the clipboard and outputs the result as keystrokes.",
                 m => new ReplaceResult(m.Length, Ut.OnExceptionDefault(() => ClipboardGetText().UrlUnescape(), "The string contains invalid URL encoding."))),
 
-            new CommandInfo(@"\{u ([0-9a-f]+)\}$", @"{u <hexadecimal codepoint>}", @"Outputs the specified Unicode character as a keystroke.",
+            new CommandInfo(@"\{u ([0-9a-f]+)\}$", @"*{{u */codepoint/*}}*", @"Outputs the specified Unicode character as a keystroke. The codepoint must be in hexadecimal.",
                 m =>
                 {
                     int i;
@@ -80,30 +80,30 @@ namespace UniKey
                         : new ReplaceResult(m.Length, "Invalid codepoint.");
                 }),
 
-            new CommandInfo(@"\{cp( .)?\}$", @"{cp <character>}, {cp}", @"Outputs the hexadecimal Unicode codepoint value of the specified character, or the first character from the clipboard if none specified, as keystrokes.",
+            new CommandInfo(@"\{cp( .)?\}$", @"*{{cp */character/*}}*, *{{cp}}*", @"Outputs the hexadecimal Unicode codepoint value of the specified character, or the first character from the clipboard if none specified, as keystrokes.",
                 m => new ReplaceResult(m.Length, (m.Groups[1].Length > 0 ? char.ConvertToUtf32(m.Groups[1].Value, 1) : char.ConvertToUtf32(ClipboardGetText(), 0)).ToString("X4"))),
 
             //new CommandInfo(@"([a-zA-Z`'~""@¬]+)([^a-zA-Z`'~""@¬])$", "<text>", @"Converts all text to Cyrillic when Scroll Lock is on.",
             //    m => Control.IsKeyLocked(Keys.Scroll) ? new ReplaceResult(m.Length, Conversions.Convert(Conversions.RussianNative, m.Groups[1].Value) + m.Groups[2].Value) : null),
 
-            new CommandInfo(@"\{c ([^\{\}]+)\}$", "{c <text>}", @"Converts the specified text to Cyrillic.",
+            new CommandInfo(@"\{c ([^\{\}]+)\}$", "*{{c */text/*}}*", @"Converts the specified text to Cyrillic.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Cyrillic, m.Groups[1].Value))),
-            new CommandInfo(@"\{g ([^\{\}]+)\}$", "{g <text>}", @"Converts the specified text to Greek.",
+            new CommandInfo(@"\{g ([^\{\}]+)\}$", "*{{g */text/*}}*", @"Converts the specified text to Greek.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Greek, m.Groups[1].Value))),
-            new CommandInfo(@"\{hi ([^\{\}]+)\}$", "{hi <text>}", @"Converts the specified text to Hiragana.",
+            new CommandInfo(@"\{hi ([^\{\}]+)\}$", "*{{hi */text/*}}*", @"Converts the specified text to Hiragana.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Hiragana, m.Groups[1].Value))),
-            new CommandInfo(@"\{ka ([^\{\}]+)\}$", "{ka <text>}", @"Converts the specified text to Katakana.",
+            new CommandInfo(@"\{ka ([^\{\}]+)\}$", "*{{ka */text/*}}*", @"Converts the specified text to Katakana.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Katakana, m.Groups[1].Value))),
 
-            new CommandInfo(@"\{setpassword ([^\{\}]+)\}$", "{setpassword <newpassword>}",
+            new CommandInfo(@"\{setpassword ([^\{\}]+)\}$", "*{{setpassword */newpassword/*}}*",
                 @"Encrypts the UniKey data file using the specified password. You will be prompted for the password every time UniKey starts. If you forget the password, you will not be able to retrieve your UniKey data.",
                 m => { Password = m.Groups[1].Value; saveLater(); return new ReplaceResult(m.Length, "done"); }),
 
-            new CommandInfo(@"\{removepassword\}$", "{removepassword}",
+            new CommandInfo(@"\{removepassword\}$", "*{{removepassword}}*",
                 @"Saves the UniKey data file unencrypted. You will no longer be prompted for a password when UniKey starts.",
                 m => { Password = null; saveLater(); return new ReplaceResult(m.Length, "done"); }),
 
-            new CommandInfo(@"\{set mousegrid (on|off)\}", "{set mousegrid <on/off>}",
+            new CommandInfo(@"\{set mousegrid (on|off)\}", "*{{set mousegrid on}}*, *{{set mousegrid off}}*",
                 @"Enables or disables the mouse grid feature. The mouse grid is activated by turning Num Lock on and then operated using the keys on the NumPad.",
                 m =>
                 {
@@ -112,7 +112,7 @@ namespace UniKey
                     return new ReplaceResult(m.Length, "Mouse grid now {0}.".Fmt(m.Groups[1].Value));
                 }),
 
-            new CommandInfo(@"\{exit\}$", "{exit}", "Exits UniKey.",
+            new CommandInfo(@"\{exit\}$", "*{{exit}}*", "Exits UniKey.",
                 m =>
                 {
                     Application.Exit();
@@ -206,10 +206,10 @@ namespace UniKey
             GuiThreadInvoker.BeginInvoke(new Action(() =>
             {
                 var str = new StringBuilder();
-                foreach (var info in Commands.OrderBy(cmd => cmd.CommandName))
+                foreach (var info in Commands)
                 {
-                    str.AppendLine("*" + EggsML.Escape(info.CommandName) + "*");
-                    str.AppendLine("    " + EggsML.Escape(info.HelpString));
+                    str.AppendLine(info.CommandName);
+                    str.AppendLine("    " + info.HelpString);
                     str.AppendLine();
                 }
 
