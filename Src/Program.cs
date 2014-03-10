@@ -36,16 +36,7 @@ namespace UniKey
 
         static CommandInfo[] Commands = Ut.NewArray
         (
-            new CommandInfo(@"\{exit\}$", "{exit}", "Exits UniKey.",
-                m =>
-                {
-                    Application.Exit();
-                    return new ReplaceResult(m.Length, "Exiting.");
-                }),
-
-            new CommandInfo(@"\{del ([^\{\}]+|\{[^\{\}]+\})\}$", "{del <key>}",
-                @"Deletes the specified key from the replacements dictionary. The key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'.",
-                m => del(m.Groups[1].Value, m.Length)),
+            new CommandInfo(@"\{help\}$", "{help}", @"Displays this help screen.", m => help(m.Length)),
 
             new CommandInfo(@"\{add ([^\{\}]+|\{[^\{\}]+\})\}$", "{add <key>}",
                 @"Adds a new entry to the replacements dictionary. The key is specified, the replacement value is taken from the clipboard. The key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'.",
@@ -55,15 +46,9 @@ namespace UniKey
                 @"Changes the key for an existing replacement rule. Each key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'. (Note this command does not work for keys containing spaces; you must use {del <key>} followed by {add <key>} for those.)",
                 m => ren(m.Groups[1].Value, m.Groups[2].Value, m.Length)),
 
-            new CommandInfo(@"\{setpassword ([^\{\}]+)\}$", "{setpassword <newpassword>}",
-                @"Encrypts the UniKey data file using the specified password. You will be prompted for the password every time UniKey starts. If you forget the password, you will not be able to retrieve your UniKey data.",
-                m => { Password = m.Groups[1].Value; saveLater(); return new ReplaceResult(m.Length, "done"); }),
-
-            new CommandInfo(@"\{removepassword\}$", "{removepassword}",
-                @"Saves the UniKey data file unencrypted. You will no longer be prompted for a password when UniKey starts.",
-                m => { Password = null; saveLater(); return new ReplaceResult(m.Length, "done"); }),
-
-            new CommandInfo(@"\{help\}$", "{help}", @"Displays this help screen.", m => help(m.Length)),
+            new CommandInfo(@"\{del ([^\{\}]+|\{[^\{\}]+\})\}$", "{del <key>}",
+                @"Deletes the specified key from the replacements dictionary. The key may be surrounded by curly braces, but may otherwise not contain any '{' or '}'.",
+                m => del(m.Groups[1].Value, m.Length)),
 
             new CommandInfo(@"\{f\s+([^\{\}]+?)\s*\}$", @"{f <words>}",
                 @"Searches for a Unicode character using the specified keywords and outputs the best match.",
@@ -72,6 +57,10 @@ namespace UniKey
             new CommandInfo(@"\{fa\s+([^\{\}]+?)\s*\}$", @"{fa <words>}",
                 @"Finds all Unicode characters whose names contain the specified words, and places a tabular list of those characters in the clipboard.",
                 m => findAll(m.Groups[1].Value, m.Length)),
+
+            new CommandInfo(@"\{r\}$", @"{r}",
+                @"List all the replacement rules that generate as output the text that is currently in the clipboard.",
+                m => findRules(m.Length)),
 
             new CommandInfo(@"\{html\}$", @"{html}", @"HTML-escapes the current contents of the clipboard and outputs the result as keystrokes.",
                 m => new ReplaceResult(m.Length, ClipboardGetText().HtmlEscape())),
@@ -106,6 +95,14 @@ namespace UniKey
             new CommandInfo(@"\{ka ([^\{\}]+)\}$", "{ka <text>}", @"Converts the specified text to Katakana.",
                 m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Katakana, m.Groups[1].Value))),
 
+            new CommandInfo(@"\{setpassword ([^\{\}]+)\}$", "{setpassword <newpassword>}",
+                @"Encrypts the UniKey data file using the specified password. You will be prompted for the password every time UniKey starts. If you forget the password, you will not be able to retrieve your UniKey data.",
+                m => { Password = m.Groups[1].Value; saveLater(); return new ReplaceResult(m.Length, "done"); }),
+
+            new CommandInfo(@"\{removepassword\}$", "{removepassword}",
+                @"Saves the UniKey data file unencrypted. You will no longer be prompted for a password when UniKey starts.",
+                m => { Password = null; saveLater(); return new ReplaceResult(m.Length, "done"); }),
+
             new CommandInfo(@"\{set mousegrid (on|off)\}", "{set mousegrid <on/off>}",
                 @"Enables or disables the mouse grid feature. The mouse grid is activated by turning Num Lock on and then operated using the keys on the NumPad.",
                 m =>
@@ -113,6 +110,13 @@ namespace UniKey
                     Settings.MouseGridEnabled = m.Groups[1].Value == "on";
                     saveLater();
                     return new ReplaceResult(m.Length, "Mouse grid now {0}.".Fmt(m.Groups[1].Value));
+                }),
+
+            new CommandInfo(@"\{exit\}$", "{exit}", "Exits UniKey.",
+                m =>
+                {
+                    Application.Exit();
+                    return new ReplaceResult(m.Length, "Exiting.");
                 })
         );
 
@@ -191,6 +195,12 @@ namespace UniKey
             return new ReplaceResult(length, "");
         }
 
+        private static ReplaceResult findRules(int length)
+        {
+            var output = Clipboard.GetText();
+            return new ReplaceResult(length, Settings.Replacers.Where(kvp => kvp.Value == output).Select(kvp => kvp.Key).JoinString("; "));
+        }
+
         private static ReplaceResult help(int length)
         {
             GuiThreadInvoker.BeginInvoke(new Action(() =>
@@ -198,11 +208,12 @@ namespace UniKey
                 var str = new StringBuilder();
                 foreach (var info in Commands.OrderBy(cmd => cmd.CommandName))
                 {
-                    str.AppendLine(info.CommandName);
-                    str.AppendLine("    " + info.HelpString);
+                    str.AppendLine("*" + EggsML.Escape(info.CommandName) + "*");
+                    str.AppendLine("    " + EggsML.Escape(info.HelpString));
                     str.AppendLine();
                 }
-                DlgMessage.Show(str.ToString(), "UniKey Commands", DlgType.Info);
+
+                new HelpForm(str.ToString()).Show();
             }));
             return new ReplaceResult(length, "");
         }

@@ -17,5 +17,4 @@ namespace UniKey
         public int ReplaceLength { get { return _replaceLength; } }
         public string ReplaceWith { get { return _replaceWith; } }
     }
-
 }
