@@ -15,7 +15,6 @@ using RT.Util;
 using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
 using RT.Util.Xml;
-using UniKey.Properties;
 
 namespace UniKey
 {
@@ -218,16 +217,7 @@ namespace UniKey
             return new ReplaceResult(length, "");
         }
 
-        private static Dictionary<int, string> _unicodeData = null;
-        static Dictionary<int, string> UnicodeData
-        {
-            get
-            {
-                if (_unicodeData == null)
-                    initUnicodeDataCache();
-                return _unicodeData;
-            }
-        }
+        static Dictionary<int, string> UnicodeData;
 
         static void parse(string input, Dictionary<string, string> addTo)
         {
@@ -257,6 +247,27 @@ namespace UniKey
 
             if (!loadSettings())
                 return;
+
+            try
+            {
+                UnicodeData = new Dictionary<int, string>();
+                foreach (var line in File.ReadAllText(PathUtil.AppPathCombine("UnicodeData.txt")).Replace("\r", "").Split('\n'))
+                {
+                    if (line.Length == 0)
+                        continue;
+                    var fields = line.Split(';');
+                    if (fields.Length < 2)
+                        continue;
+                    if (fields[1].Length == 0 || fields[1][0] == '<')
+                        continue;
+                    UnicodeData[int.Parse(fields[0], NumberStyles.HexNumber)] = fields[1].ToUpperInvariant();
+                }
+            }
+            catch (Exception e)
+            {
+                DlgMessage.Show(e.Message, "Error", DlgType.Error);
+                return;
+            }
 
             GuiThreadInvoker = new Form();
             var _ = GuiThreadInvoker.Handle;
@@ -831,21 +842,5 @@ namespace UniKey
                             Keys.Up, Keys.Down, Keys.Left, Keys.Right,
                             Keys.End, Keys.Home, Keys.PageDown, Keys.PageUp,
                             Keys.F1, Keys.F2, Keys.F3, Keys.F4, Keys.F5, Keys.F6, Keys.F7, Keys.F8, Keys.F9, Keys.F10, Keys.F11, Keys.F12);
-
-        private static void initUnicodeDataCache()
-        {
-            _unicodeData = new Dictionary<int, string>();
-            foreach (var line in Resources.UnicodeData.Replace("\r", "").Split('\n'))
-            {
-                if (line.Length == 0)
-                    continue;
-                var fields = line.Split(';');
-                if (fields.Length < 2)
-                    continue;
-                if (fields[1].Length == 0 || fields[1][0] == '<')
-                    continue;
-                _unicodeData[int.Parse(fields[0], NumberStyles.HexNumber)] = fields[1].ToUpperInvariant();
-            }
-        }
     }
 }
