@@ -168,6 +168,8 @@ namespace UniKey
 
         private static ReplaceResult find(string input, int length)
         {
+            if (UnicodeData == null)
+                return new ReplaceResult(length, "Unicode data not available: " + UnicodeDataError);
             string[] words = input.Length == 0 ? null : input.Split(' ').Where(s => s.Length > 0).Select(s => s.ToUpperInvariant()).ToArray();
             if (words == null || words.Length < 1)
                 return new ReplaceResult(length, "No search terms given.");
@@ -180,6 +182,8 @@ namespace UniKey
 
         private static ReplaceResult findAll(string input, int length)
         {
+            if (UnicodeData == null)
+                return new ReplaceResult(length, "Unicode data not available: " + UnicodeDataError);
             string[] words = input.Length == 0 ? null : input.Split(' ').Where(s => s.Length > 0).Select(s => s.ToUpperInvariant()).ToArray();
             if (words == null || words.Length < 1)
                 return new ReplaceResult(length, "No search terms given.");
@@ -218,6 +222,7 @@ namespace UniKey
         }
 
         static Dictionary<int, string> UnicodeData;
+        static string UnicodeDataError = null;
 
         static void parse(string input, Dictionary<string, string> addTo)
         {
@@ -251,7 +256,8 @@ namespace UniKey
             try
             {
                 UnicodeData = new Dictionary<int, string>();
-                foreach (var line in File.ReadAllText(PathUtil.AppPathCombine("UnicodeData.txt")).Replace("\r", "").Split('\n'))
+                var filename = Settings.UnicodeDataFile == null ? PathUtil.AppPathCombine("UnicodeData.txt") : PathUtil.ExpandPath(Settings.UnicodeDataFile);
+                foreach (var line in File.ReadAllText(filename).Replace("\r", "").Split('\n'))
                 {
                     if (line.Length == 0)
                         continue;
@@ -265,8 +271,8 @@ namespace UniKey
             }
             catch (Exception e)
             {
-                DlgMessage.Show(e.Message, "Error", DlgType.Error);
-                return;
+                UnicodeData = null;
+                UnicodeDataError = e.Message;
             }
 
             GuiThreadInvoker = new Form();
