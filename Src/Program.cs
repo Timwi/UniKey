@@ -70,6 +70,12 @@ namespace UniKey
             new CommandInfo(@"\{unurl\}$", @"*{{unurl}}*", @"Reverses URL escaping in the current contents of the clipboard and outputs the result as keystrokes.",
                 m => new ReplaceResult(m.Length, Ut.OnExceptionDefault(() => ClipboardGetText().UrlUnescape(), "The string contains invalid URL encoding."))),
 
+            new CommandInfo(@"\{b64\}$", @"*{{b64}}*", @"Base64-escapes the current contents of the clipboard and outputs the result as keystrokes.",
+                m => new ReplaceResult(m.Length, Convert.ToBase64String(ClipboardGetText().ToUtf8()))),
+
+            new CommandInfo(@"\{unb64\}$", @"*{{unb64}}*", @"Reverses base64 escaping in the current contents of the clipboard and outputs the result as keystrokes.",
+                m => new ReplaceResult(m.Length, Ut.OnExceptionDefault(() => Convert.FromBase64String(ClipboardGetText()).FromUtf8(), "The string contains invalid base64 encoding."))),
+
             new CommandInfo(@"\{u ([0-9a-f]+)\}$", @"*{{u */codepoint/*}}*", @"Outputs the specified Unicode character as a keystroke. The codepoint must be in hexadecimal.",
                 m =>
                 {
