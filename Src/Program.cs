@@ -91,14 +91,11 @@ namespace UniKey
             //new CommandInfo(@"([a-zA-Z`'~""@¬]+)([^a-zA-Z`'~""@¬])$", "<text>", @"Converts all text to Cyrillic when Scroll Lock is on.",
             //    m => Control.IsKeyLocked(Keys.Scroll) ? new ReplaceResult(m.Length, Conversions.Convert(Conversions.RussianNative, m.Groups[1].Value) + m.Groups[2].Value) : null),
 
-            new CommandInfo(@"\{c ([^\{\}]+)\}$", "*{{c */text/*}}*", @"Converts the specified text to Cyrillic.",
-                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Cyrillic, m.Groups[1].Value))),
-            new CommandInfo(@"\{g ([^\{\}]+)\}$", "*{{g */text/*}}*", @"Converts the specified text to Greek.",
-                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Greek, m.Groups[1].Value))),
-            new CommandInfo(@"\{hi ([^\{\}]+)\}$", "*{{hi */text/*}}*", @"Converts the specified text to Hiragana.",
-                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Hiragana, m.Groups[1].Value))),
-            new CommandInfo(@"\{ka ([^\{\}]+)\}$", "*{{ka */text/*}}*", @"Converts the specified text to Katakana.",
-                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.Katakana, m.Groups[1].Value))),
+            new CommandInfo(
+                @"\{{({0}) ([^\{{\}}]+)\}}$".Fmt(Conversions.AllConversions.Select(c => c.Key).JoinString("|")),
+                "*{{*/conversion/* */text/*}}*",
+                "Converts the specified /text/ according to a specified /conversion/:\n" + Conversions.AllConversions.Select(c => "    [*" + c.Key + "* == " + c.Name + "]").JoinString("\n"),
+                m => new ReplaceResult(m.Length, Conversions.Convert(Conversions.AllConversions.First(c => c.Key == m.Groups[1].Value), m.Groups[2].Value))),
 
             new CommandInfo(@"\{setpassword ([^\{\}]+)\}$", "*{{setpassword */newpassword/*}}*",
                 @"Encrypts the UniKey data file using the specified password. You will be prompted for the password every time UniKey starts. If you forget the password, you will not be able to retrieve your UniKey data.",
