@@ -14,7 +14,7 @@ using System.Xml.Linq;
 using RT.Util;
 using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
-using RT.Util.Xml;
+using RT.Util.Serialization;
 
 namespace UniKey
 {
@@ -339,7 +339,7 @@ namespace UniKey
                             try
                             {
                                 using (var cStream = new CryptoStream(f, rijDec, CryptoStreamMode.Read))
-                                    Settings = XmlClassify.ObjectFromXElement<Settings>(XElement.Parse(cStream.ReadAllBytes().FromUtf8()));
+                                    Settings = ClassifyXml.Deserialize<Settings>(XElement.Parse(cStream.ReadAllBytes().FromUtf8()));
                             }
                             catch (Exception e)
                             {
@@ -355,7 +355,7 @@ namespace UniKey
                 if (!result)
                     return false;
                 if (!usePw)
-                    Settings = XmlClassify.LoadObjectFromXmlFile<Settings>(MachineSettings.SettingsPathExpanded);
+                    Settings = ClassifyXml.DeserializeFile<Settings>(MachineSettings.SettingsPathExpanded);
             }
             catch (Exception e)
             {
@@ -443,11 +443,11 @@ namespace UniKey
                             {
                                 outputStream.Write("passw".ToUtf8());
                                 using (var cStream = new CryptoStream(outputStream, rijEnc, CryptoStreamMode.Write))
-                                    cStream.Write(XmlClassify.ObjectToXElement(Settings).ToString().ToUtf8());
+                                    cStream.Write(ClassifyXml.Serialize(Settings).ToString().ToUtf8());
                             }
                         }
                         else
-                            XmlClassify.SaveObjectToXmlFile(Settings, MachineSettings.SettingsPathExpanded);
+                            ClassifyXml.SerializeToFile(Settings, MachineSettings.SettingsPathExpanded);
                     }, TimeSpan.FromSeconds(20));
                 }, attempts: 3, delayMs: 5 * 1000);
             }
