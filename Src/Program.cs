@@ -64,6 +64,9 @@ namespace UniKey
             new CommandInfo(@"\{html\}$", @"*{{html}}*", @"HTML-escapes the current contents of the clipboard and outputs the result as keystrokes.",
                 m => new ReplaceResult(m.Length, ClipboardGetText().HtmlEscape())),
 
+            new CommandInfo(@"\{unhtml\}$", @"*{{unhtml}}*", @"Reverses HTML escaping (HTML entities) in the current contents of the clipboard and outputs the result as keystrokes.",
+                m => new ReplaceResult(m.Length, unHtml(ClipboardGetText()))),
+
             new CommandInfo(@"\{url\}$", @"*{{url}}*", @"URL-escapes the current contents of the clipboard and outputs the result as keystrokes.",
                 m => new ReplaceResult(m.Length, ClipboardGetText().UrlEscape())),
 
@@ -121,6 +124,31 @@ namespace UniKey
                     return new ReplaceResult(m.Length, "Exiting.");
                 })
         );
+
+        private static string unHtml(string s)
+        {
+            string lastEntity = null;
+            try
+            {
+                return Regex.Replace(
+                    ClipboardGetText(),
+                    @"&(#x[0-9a-fA-F]+|#\d+|\w+);",
+                    v =>
+                    {
+                        lastEntity = v.Value;
+                        var val = v.Groups[1].Value;
+                        if (val.StartsWith("#x"))
+                            return char.ConvertFromUtf32(Convert.ToInt32(val.Substring(2), 16));
+                        if (val.StartsWith("#"))
+                            return char.ConvertFromUtf32(Convert.ToInt32(val.Substring(1), 10));
+                        return HtmlEntities.Data[val];
+                    });
+            }
+            catch (Exception e)
+            {
+                return "Invalid entity: " + lastEntity;
+            }
+        }
 
         private static string ClipboardGetText()
         {
