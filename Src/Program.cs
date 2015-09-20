@@ -144,7 +144,7 @@ namespace UniKey
                         return HtmlEntities.Data[val];
                     });
             }
-            catch (Exception e)
+            catch
             {
                 return "Invalid entity: " + lastEntity;
             }
