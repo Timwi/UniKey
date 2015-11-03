@@ -61,8 +61,8 @@ namespace UniKey
                 @"List all the replacement rules that generate as output the text that is currently in the clipboard.",
                 m => findRules(m.Length)),
 
-            new CommandInfo(@"\{html\}$", @"*{{html}}*", @"HTML-escapes the current contents of the clipboard and outputs the result as keystrokes.",
-                m => new ReplaceResult(m.Length, ClipboardGetText().HtmlEscape())),
+            new CommandInfo(@"\{html( ['""]+)?\}$", @"*{{html}}*, *{{html '}}*, *{{html """"}}*, *{{html '""""}}*", @"""HTML-escapes the current contents of the clipboard and outputs the result as keystrokes. By default, only <, > and & are escaped. Optionally specify ' (apostrophe) and/or """" (double-quote) to escape those, too.""",
+                m => new ReplaceResult(m.Length, ClipboardGetText().HtmlEscape(!m.Groups[1].Value.Contains("'"), !m.Groups[1].Value.Contains("\"")))),
 
             new CommandInfo(@"\{unhtml\}$", @"*{{unhtml}}*", @"Reverses HTML escaping (HTML entities) in the current contents of the clipboard and outputs the result as keystrokes.",
                 m => new ReplaceResult(m.Length, unHtml(ClipboardGetText()))),
