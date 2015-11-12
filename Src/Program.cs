@@ -506,21 +506,16 @@ namespace UniKey
             Keys.Multiply, Keys.Add, Keys.Subtract, Keys.Divide, Keys.Escape
         );
 
+        static DateTime _lastHeartbeat;
+
         static void keyDown(object sender, GlobalKeyEventArgs e)
         {
+            var start = DateTime.UtcNow;
             if (Processing)
                 return;
             Processing = true;
             try
             {
-#if DEBUG_LOG
-                var buf = Encoding.UTF8.GetBytes("Down: {0} (NumLock: {1})\r\n".Fmt(e.VirtualKeyCode, Control.IsKeyLocked(Keys.NumLock)));
-                using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
-                {
-                    f.Write(buf, 0, buf.Length);
-                    f.Close();
-                }
-#endif
                 if (Settings.MouseGridEnabled && !Pressed.Contains(Keys.LControlKey) && !Pressed.Contains(Keys.RControlKey))
                 {
                     if (e.VirtualKeyCode == Keys.NumLock && Control.IsKeyLocked(Keys.NumLock))
@@ -592,6 +587,16 @@ namespace UniKey
             finally
             {
                 Processing = false;
+                if (Settings.DebugLogPath != null)
+                {
+                    if ((DateTime.UtcNow - start).TotalMilliseconds >= 100)
+                        File.AppendAllLines(Settings.DebugLogPath, new[] { "{2}  Down: {0}, took {1:0} ms".Fmt(e.VirtualKeyCode, (DateTime.UtcNow - start).TotalMilliseconds, DateTime.Now) });
+                    else if ((DateTime.UtcNow - _lastHeartbeat).TotalSeconds >= 10)
+                    {
+                        _lastHeartbeat = DateTime.UtcNow;
+                        File.AppendAllLines(Settings.DebugLogPath, new[] { "{0}  Still alive!".Fmt(DateTime.Now) });
+                    }
+                }
             }
         }
 
@@ -798,20 +803,12 @@ namespace UniKey
 
         static void keyUp(object sender, GlobalKeyEventArgs e)
         {
+            var start = DateTime.UtcNow;
             if (Processing)
                 return;
             Processing = true;
             try
             {
-#if DEBUG_LOG
-                var buf = Encoding.UTF8.GetBytes("Up: " + e.VirtualKeyCode.ToString() + "\r\n");
-                using (var f = File.Open(@"C:\temp\log", FileMode.Append, FileAccess.Write, FileShare.Write))
-                {
-                    f.Write(buf, 0, buf.Length);
-                    f.Close();
-                }
-#endif
-
                 Pressed.Remove(e.VirtualKeyCode);
 
                 if (LastBufferCheck > Buffer.Length)
@@ -869,6 +866,9 @@ namespace UniKey
             finally
             {
                 Processing = false;
+                if (Settings.DebugLogPath != null)
+                    if ((DateTime.UtcNow - start).TotalMilliseconds >= 100)
+                        File.AppendAllLines(Settings.DebugLogPath, new[] { "{2}  Up: {0}, took {1:0} ms".Fmt(e.VirtualKeyCode, (DateTime.UtcNow - start).TotalMilliseconds, DateTime.Now) });
             }
         }
 

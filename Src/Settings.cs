@@ -11,6 +11,7 @@ namespace UniKey
         public bool MouseGridEnabled;
         public string UnicodeDataFile = null;
         public Dictionary<string, string> Replacers = new Dictionary<string, string>();
+        public string DebugLogPath = null;
     }
 
     [Settings("UniKey", SettingsKind.MachineSpecific)]
