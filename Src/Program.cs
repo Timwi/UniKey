@@ -697,6 +697,7 @@ namespace UniKey
 
             var keyWithoutShift = key & ~Keys.ShiftKey;
             var shift = (key & Keys.ShiftKey) == Keys.ShiftKey;
+            var from = _dragStartFrom ?? pos;
 
             switch (keyWithoutShift)
             {
@@ -725,9 +726,11 @@ namespace UniKey
                     newShown = false;
                     execute = () =>
                     {
+                        Cursor.Position = from;
                         WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTDOWN : WinAPI.MOUSEEVENTF_LEFTDOWN, pos.X, pos.Y, 0, 0);
                         WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTUP : WinAPI.MOUSEEVENTF_LEFTUP, pos.X, pos.Y, 0, 0);
                         WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTDOWN : WinAPI.MOUSEEVENTF_LEFTDOWN, pos.X, pos.Y, 0, 0);
+                        Cursor.Position = pos;
                         WinAPI.mouse_event(_rightMouseButton ? WinAPI.MOUSEEVENTF_RIGHTUP : WinAPI.MOUSEEVENTF_LEFTUP, pos.X, pos.Y, 0, 0);
                     };
                     break;
@@ -739,7 +742,6 @@ namespace UniKey
 
                 case Keys.Decimal:
                     newShown = false;
-                    var from = _dragStartFrom ?? pos;
                     execute = () =>
                     {
                         Cursor.Position = from;
