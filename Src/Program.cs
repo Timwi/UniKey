@@ -142,7 +142,7 @@ namespace UniKey
                         if (val.StartsWith("#"))
                             return char.ConvertFromUtf32(Convert.ToInt32(val.Substring(1), 10));
                         return HtmlEntities.Data[val];
-                    });
+                    }).Replace("\r", "");
             }
             catch
             {
