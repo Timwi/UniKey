@@ -860,7 +860,9 @@ namespace UniKey
                             keystrokes.Add(Tuple.Create(e.VirtualKeyCode, true));
                         }
                         keystrokes.AddRange(Enumerable.Repeat<object>(Keys.Back, oldBuffer.Length - i));
-                        keystrokes.AddRange(Buffer.Substring(i).Cast<object>());
+                        for (int ix = i; ix < Buffer.Length; ix++)
+                            if (Buffer[ix] != '\r')
+                                keystrokes.Add(Buffer[ix] == '\n' ? (object) Keys.Enter : Buffer[ix]);
                         Ut.SendKeystrokes(keystrokes);
                     }
                 }
