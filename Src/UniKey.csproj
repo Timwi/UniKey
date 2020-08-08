@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>UniKey</RootNamespace>
     <AssemblyName>UniKey</AssemblyName>
-    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <OutputPath>..\Builds\$(Configuration)</OutputPath>
     <IntermediateOutputPath>..\Builds\$(Configuration)\obj-$(AssemblyName)</IntermediateOutputPath>
@@ -62,9 +62,21 @@
     <Compile Include="Settings.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\RT.Util\Src\RT.Util.csproj">
+    <ProjectReference Include="..\..\RT.Util\RT.Serialization.Xml\RT.Serialization.Xml.csproj">
+      <Project>{555211bf-1a65-43d3-923b-cfef630246c0}</Project>
+      <Name>RT.Serialization.Xml</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\RT.Util\RT.Serialization\RT.Serialization.csproj">
+      <Project>{de0c8497-961f-4b95-bbc4-a87bf6f030ae}</Project>
+      <Name>RT.Serialization</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\RT.Util\RT.Util.Core\RT.Util.Core.csproj">
       <Project>{8D0FE79C-AD8D-475C-9E6F-9CAE85365B5D}</Project>
-      <Name>Util</Name>
+      <Name>RT.Util.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\RT.Util\RT.Util\RT.Util.csproj">
+      <Project>{bb2de4a6-c1c0-490a-bb0c-1d0fd70ffd6c}</Project>
+      <Name>RT.Util</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

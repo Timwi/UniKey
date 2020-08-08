@@ -11,10 +11,10 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Xml.Linq;
+using RT.Serialization;
 using RT.Util;
-using RT.Util.Dialogs;
 using RT.Util.ExtensionMethods;
-using RT.Util.Serialization;
+using RT.Util.Forms;
 
 namespace UniKey
 {
@@ -23,7 +23,7 @@ namespace UniKey
         static Settings Settings;
         static MachineSettings MachineSettings;
         static GlobalKeyboardListener KeyboardListener;
-        static List<Keys> Pressed = new List<Keys>();
+        static readonly List<Keys> Pressed = new List<Keys>();
         static bool Processing = false;
         static string Buffer = string.Empty;
         static int LastBufferCheck = 0;
@@ -33,7 +33,7 @@ namespace UniKey
 
         static Control GuiThreadInvoker;
 
-        static CommandInfo[] Commands = Ut.NewArray
+        static readonly CommandInfo[] Commands = Ut.NewArray
         (
             new CommandInfo(@"\{help\}$", "*{{help}}*", @"Displays this help screen.", m => help(m.Length)),
 
@@ -80,19 +80,12 @@ namespace UniKey
                 m => new ReplaceResult(m.Length, Ut.OnExceptionDefault(() => Convert.FromBase64String(ClipboardGetText()).FromUtf8(), "The string contains invalid base64 encoding."))),
 
             new CommandInfo(@"\{u ([0-9a-f]+)\}$", @"*{{u */codepoint/*}}*", @"Outputs the specified Unicode character as a keystroke. The codepoint must be in hexadecimal.",
-                m =>
-                {
-                    int i;
-                    return int.TryParse(m.Groups[1].Value, NumberStyles.HexNumber, null, out i)
+                m => int.TryParse(m.Groups[1].Value, NumberStyles.HexNumber, null, out var i)
                         ? new ReplaceResult(m.Length, char.ConvertFromUtf32(i))
-                        : new ReplaceResult(m.Length, "Invalid codepoint.");
-                }),
+                        : new ReplaceResult(m.Length, "Invalid codepoint.")),
 
             new CommandInfo(@"\{cp( .)?\}$", @"*{{cp */character/*}}*, *{{cp}}*", @"Outputs the hexadecimal Unicode codepoint value of the specified character, or the first character from the clipboard if none specified, as keystrokes.",
                 m => new ReplaceResult(m.Length, (m.Groups[1].Length > 0 ? char.ConvertToUtf32(m.Groups[1].Value, 1) : char.ConvertToUtf32(ClipboardGetText(), 0)).ToString("X4"))),
-
-            //new CommandInfo(@"([a-zA-Z`'~""@¬]+)([^a-zA-Z`'~""@¬])$", "<text>", @"Converts all text to Cyrillic when Scroll Lock is on.",
-            //    m => Control.IsKeyLocked(Keys.Scroll) ? new ReplaceResult(m.Length, Conversions.Convert(Conversions.RussianNative, m.Groups[1].Value) + m.Groups[2].Value) : null),
 
             new CommandInfo(
                 @"\{{({0}) ([^\{{\}}]+)\}}$".Fmt(Conversions.AllConversions.Select(c => c.Key).JoinString("|")),
@@ -255,19 +248,8 @@ namespace UniKey
         static Dictionary<int, string> UnicodeData;
         static string UnicodeDataError = null;
 
-        static void parse(string input, Dictionary<string, string> addTo)
-        {
-            string[] items = input.Replace("\r", "").Replace("\n", "").Split(';');
-            foreach (string item in items)
-            {
-                int i = item.IndexOf('>');
-                if (i > 0)
-                    addTo.Add(item.Substring(0, i), item.Substring(i + 1));
-            }
-        }
-
-        private static byte[] _iv = "A,EW9%9Enp{1!oiN".ToUtf8();
-        private static byte[] _salt = "kdSkeuDkj3%k".ToUtf8();
+        private static readonly byte[] _iv = "A,EW9%9Enp{1!oiN".ToUtf8();
+        private static readonly byte[] _salt = "kdSkeuDkj3%k".ToUtf8();
 
         [STAThread]
         static void Main()
@@ -488,7 +470,7 @@ namespace UniKey
             return true;
         }
 
-        static byte[] keyboardState = new byte[256];
+        static readonly byte[] keyboardState = new byte[256];
         static string getCharsFromKeys(Keys keys, bool shift)
         {
             var buf = new StringBuilder(16);
@@ -863,7 +845,7 @@ namespace UniKey
                         for (int ix = i; ix < Buffer.Length; ix++)
                             if (Buffer[ix] != '\r')
                                 keystrokes.Add(Buffer[ix] == '\n' ? (object) Keys.Enter : Buffer[ix]);
-                        Ut.SendKeystrokes(keystrokes);
+                        UtWin.SendKeystrokes(keystrokes);
                     }
                 }
             }
@@ -876,7 +858,7 @@ namespace UniKey
             }
         }
 
-        private static Keys[] _emptyKeys = Ut.NewArray<Keys>(Keys.LControlKey, Keys.RControlKey, Keys.Escape,
+        private static readonly Keys[] _emptyKeys = Ut.NewArray<Keys>(Keys.LControlKey, Keys.RControlKey, Keys.Escape,
                             Keys.Enter, Keys.Return, Keys.Tab,
                             Keys.LMenu, Keys.RMenu, Keys.LWin, Keys.RWin,
                             Keys.Scroll,

@@ -1,9 +1,16 @@
-
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30128.74
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UniKey", "Src\UniKey.csproj", "{E1243E2A-8E95-481C-AB3A-707F4151F046}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Util", "..\RT.Util\Src\RT.Util.csproj", "{8D0FE79C-AD8D-475C-9E6F-9CAE85365B5D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RT.Util.Core", "..\RT.Util\RT.Util.Core\RT.Util.Core.csproj", "{8D0FE79C-AD8D-475C-9E6F-9CAE85365B5D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RT.Util", "..\RT.Util\RT.Util\RT.Util.csproj", "{BB2DE4A6-C1C0-490A-BB0C-1D0FD70FFD6C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RT.Serialization", "..\RT.Util\RT.Serialization\RT.Serialization.csproj", "{DE0C8497-961F-4B95-BBC4-A87BF6F030AE}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RT.Serialization.Xml", "..\RT.Util\RT.Serialization.Xml\RT.Serialization.Xml.csproj", "{555211BF-1A65-43D3-923B-CFEF630246C0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,8 +31,29 @@ Global
 		{8D0FE79C-AD8D-475C-9E6F-9CAE85365B5D}.DebugLog|Any CPU.Build.0 = Debug|Any CPU
 		{8D0FE79C-AD8D-475C-9E6F-9CAE85365B5D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8D0FE79C-AD8D-475C-9E6F-9CAE85365B5D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BB2DE4A6-C1C0-490A-BB0C-1D0FD70FFD6C}.Debug|Any CPU.ActiveCfg = DebugUnsafe|Any CPU
+		{BB2DE4A6-C1C0-490A-BB0C-1D0FD70FFD6C}.Debug|Any CPU.Build.0 = DebugUnsafe|Any CPU
+		{BB2DE4A6-C1C0-490A-BB0C-1D0FD70FFD6C}.DebugLog|Any CPU.ActiveCfg = DebugUnsafe|Any CPU
+		{BB2DE4A6-C1C0-490A-BB0C-1D0FD70FFD6C}.DebugLog|Any CPU.Build.0 = DebugUnsafe|Any CPU
+		{BB2DE4A6-C1C0-490A-BB0C-1D0FD70FFD6C}.Release|Any CPU.ActiveCfg = ReleaseUnsafe|Any CPU
+		{BB2DE4A6-C1C0-490A-BB0C-1D0FD70FFD6C}.Release|Any CPU.Build.0 = ReleaseUnsafe|Any CPU
+		{DE0C8497-961F-4B95-BBC4-A87BF6F030AE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE0C8497-961F-4B95-BBC4-A87BF6F030AE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DE0C8497-961F-4B95-BBC4-A87BF6F030AE}.DebugLog|Any CPU.ActiveCfg = Debug|Any CPU
+		{DE0C8497-961F-4B95-BBC4-A87BF6F030AE}.DebugLog|Any CPU.Build.0 = Debug|Any CPU
+		{DE0C8497-961F-4B95-BBC4-A87BF6F030AE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DE0C8497-961F-4B95-BBC4-A87BF6F030AE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{555211BF-1A65-43D3-923B-CFEF630246C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{555211BF-1A65-43D3-923B-CFEF630246C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{555211BF-1A65-43D3-923B-CFEF630246C0}.DebugLog|Any CPU.ActiveCfg = Debug|Any CPU
+		{555211BF-1A65-43D3-923B-CFEF630246C0}.DebugLog|Any CPU.Build.0 = Debug|Any CPU
+		{555211BF-1A65-43D3-923B-CFEF630246C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{555211BF-1A65-43D3-923B-CFEF630246C0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4CDACBAD-C21B-4DFD-9258-045F85D3CDF2}
 	EndGlobalSection
 EndGlobal
