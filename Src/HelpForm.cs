@@ -41,6 +41,7 @@ namespace UniKey
             _layout.Controls.Add(_okButton, 0, 1);
             Controls.Add(_layout);
             AcceptButton = _okButton;
+            CancelButton = _okButton;
         }
 
         private void close(object _, EventArgs __)
