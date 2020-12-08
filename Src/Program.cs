@@ -110,6 +110,9 @@ namespace UniKey
                     return new ReplaceResult(m.Length, "Mouse grid now {0}.".Fmt(m.Groups[1].Value));
                 }),
 
+            new CommandInfo(@"\{guid\}$", @"*{{guid}}*", @"Outputs a randomly generated GUID.",
+                m => new ReplaceResult(m.Length, Guid.NewGuid().ToString().ToLower())),
+
             new CommandInfo(@"\{exit\}$", "*{{exit}}*", "Exits UniKey.",
                 m =>
                 {
