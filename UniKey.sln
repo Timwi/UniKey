@@ -12,6 +12,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RT.Serialization", "..\RT.U
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RT.Serialization.Xml", "..\RT.Util\RT.Serialization.Xml\RT.Serialization.Xml.csproj", "{555211BF-1A65-43D3-923B-CFEF630246C0}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RT.Serialization.Json", "..\RT.Util\RT.Serialization.Json\RT.Serialization.Json.csproj", "{A9F3E087-00E7-4CB3-B63E-0BB5E572F908}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RT.Serialization.Binary", "..\RT.Util\RT.Serialization.Binary\RT.Serialization.Binary.csproj", "{AABF5563-E0CC-43AD-A2DB-46DDEED041C2}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RT.PostBuild", "..\RT.Util\RT.PostBuild\RT.PostBuild.csproj", "{1EA2887E-AB13-4A2B-AC40-18F53ED80943}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RT.Json", "..\RT.Util\RT.Json\RT.Json.csproj", "{5D0612C1-6596-4248-9AD2-BAF7EE37CF6C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -49,6 +57,30 @@ Global
 		{555211BF-1A65-43D3-923B-CFEF630246C0}.DebugLog|Any CPU.Build.0 = Debug|Any CPU
 		{555211BF-1A65-43D3-923B-CFEF630246C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{555211BF-1A65-43D3-923B-CFEF630246C0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1EA2887E-AB13-4A2B-AC40-18F53ED80943}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1EA2887E-AB13-4A2B-AC40-18F53ED80943}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1EA2887E-AB13-4A2B-AC40-18F53ED80943}.DebugLog|Any CPU.ActiveCfg = Debug|Any CPU
+		{1EA2887E-AB13-4A2B-AC40-18F53ED80943}.DebugLog|Any CPU.Build.0 = Debug|Any CPU
+		{1EA2887E-AB13-4A2B-AC40-18F53ED80943}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1EA2887E-AB13-4A2B-AC40-18F53ED80943}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D0612C1-6596-4248-9AD2-BAF7EE37CF6C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D0612C1-6596-4248-9AD2-BAF7EE37CF6C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D0612C1-6596-4248-9AD2-BAF7EE37CF6C}.DebugLog|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D0612C1-6596-4248-9AD2-BAF7EE37CF6C}.DebugLog|Any CPU.Build.0 = Debug|Any CPU
+		{5D0612C1-6596-4248-9AD2-BAF7EE37CF6C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D0612C1-6596-4248-9AD2-BAF7EE37CF6C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A9F3E087-00E7-4CB3-B63E-0BB5E572F908}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9F3E087-00E7-4CB3-B63E-0BB5E572F908}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A9F3E087-00E7-4CB3-B63E-0BB5E572F908}.DebugLog|Any CPU.ActiveCfg = Debug|Any CPU
+		{A9F3E087-00E7-4CB3-B63E-0BB5E572F908}.DebugLog|Any CPU.Build.0 = Debug|Any CPU
+		{A9F3E087-00E7-4CB3-B63E-0BB5E572F908}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A9F3E087-00E7-4CB3-B63E-0BB5E572F908}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AABF5563-E0CC-43AD-A2DB-46DDEED041C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AABF5563-E0CC-43AD-A2DB-46DDEED041C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AABF5563-E0CC-43AD-A2DB-46DDEED041C2}.DebugLog|Any CPU.ActiveCfg = Debug|Any CPU
+		{AABF5563-E0CC-43AD-A2DB-46DDEED041C2}.DebugLog|Any CPU.Build.0 = Debug|Any CPU
+		{AABF5563-E0CC-43AD-A2DB-46DDEED041C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AABF5563-E0CC-43AD-A2DB-46DDEED041C2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
