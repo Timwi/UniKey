@@ -111,7 +111,7 @@ namespace UniKey
                 }),
 
             new CommandInfo(@"\{guid\}$", @"*{{guid}}*", @"Outputs a randomly generated GUID.",
-                m => new ReplaceResult(m.Length, Guid.NewGuid().ToString().ToLower())),
+                m => new ReplaceResult(m.Length, new Guid(RndCrypto.NextBytes(16)).ToString().ToLower())),
 
             new CommandInfo(@"\{exit\}$", "*{{exit}}*", "Exits UniKey.",
                 m =>
