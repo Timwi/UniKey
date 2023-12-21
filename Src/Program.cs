@@ -11,17 +11,21 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using System.Xml.Linq;
+using RT.Keyboard;
 using RT.Serialization;
+using RT.Serialization.Settings;
 using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Forms;
+using Timer = System.Windows.Forms.Timer;
 
 namespace UniKey
 {
     static class Program
     {
         static Settings Settings;
-        static MachineSettings MachineSettings;
+        static MachineSettings MachineSettings => MachineSettingsFile.Settings;
+        static SettingsFile<MachineSettings> MachineSettingsFile;
         static GlobalKeyboardListener KeyboardListener;
         static readonly List<Keys> Pressed = new List<Keys>();
         static bool Processing = false;
@@ -328,8 +332,8 @@ namespace UniKey
 
         private static bool loadSettings()
         {
-            SettingsUtil.LoadSettings(out MachineSettings);
-            MachineSettings.SaveQuiet();
+            MachineSettingsFile = new SettingsFileXml<MachineSettings>("UniKey", SettingsLocation.MachineLocal);
+            MachineSettingsFile.Save();
             again:
             try
             {
@@ -386,7 +390,7 @@ namespace UniKey
                     if (dlg.ShowDialog() != DialogResult.OK)
                         goto again2;
                     MachineSettings.SettingsPathExpanded = dlg.FileName;
-                    MachineSettings.SaveLoud();
+                    MachineSettingsFile.Save(throwOnError: true);
                     goto again;
                 }
                 Settings = new Settings();

@@ -14,8 +14,7 @@ namespace UniKey
         public string DebugLogPath = null;
     }
 
-    [Settings("UniKey", SettingsKind.MachineSpecific)]
-    class MachineSettings : SettingsBase
+    class MachineSettings
     {
         public string SettingsPath = @"$(AppPath)\UniKey.settings.xml";
         public string SettingsPathExpanded
