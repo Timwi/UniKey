@@ -20,7 +20,7 @@ jobs:
           script: |
             const script = require(require('path').resolve('./.github/workflows/version.js'))
             const vs = script({ context, github, firstRev: 'dba0cbb8' });
-            const verStr = vs.formatVersion(`1.3.$(GitRevCount)-$(GitBranch) [$(GitSha6)/$(yyyy)-$(mm)-$(dd)]`).replace('-master', '');
+            const verStr = vs.formatVersion(`1.3.$(GitRevCount)-$(GitBranch) ($(GitSha6)/$(yyyy)-$(mm)-$(dd))`).replace('-master', '');
             const verNum = vs.formatVersion(`1.3.$(GitRevCount)`);
             core.exportVariable('VER_STR', verStr);
             core.exportVariable('VER_NUM', verNum);
@@ -35,11 +35,11 @@ jobs:
         run: dotnet restore
 
       - name: "dotnet publish: ${{ env.VER_STR }}"
-        run: dotnet publish --configuration Release -p:InformationalVersion="${{env.VER_STR}}" -p:Version=${{env.VER_NUM}} -p:FileVersion=${{env.VER_NUM}} -p:AssemblyVersion=${{env.VER_NUM}} -o Publish
+        run: dotnet publish Src\UniKey.csproj --configuration Release -p:InformationalVersion="${{env.VER_STR}}" -p:Version=${{env.VER_NUM}} -p:FileVersion=${{env.VER_NUM}} -p:AssemblyVersion=${{env.VER_NUM}} -o Publish
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: RunLogged-v${{env.VER_NUM}}
+          name: UniKey-v${{env.VER_NUM}}
           path: Publish
           if-no-files-found: error
