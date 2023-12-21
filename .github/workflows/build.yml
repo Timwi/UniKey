@@ -1,0 +1,45 @@
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Prepare version
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const script = require(require('path').resolve('./.github/workflows/version.js'))
+            const vs = script({ context, github, firstRev: 'dba0cbb8' });
+            const verStr = vs.formatVersion(`1.3.$(GitRevCount)-$(GitBranch) [$(GitSha6)/$(yyyy)-$(mm)-$(dd)]`).replace('-master', '');
+            const verNum = vs.formatVersion(`1.3.$(GitRevCount)`);
+            core.exportVariable('VER_STR', verStr);
+            core.exportVariable('VER_NUM', verNum);
+            vs.updateText('Src/HelpForm.cs', 'v[dev]', `v${verStr}`);
+
+      - name: Install dotnet
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '8.x'
+
+      - name: dotnet restore
+        run: dotnet restore
+
+      - name: "dotnet publish: ${{ env.VER_STR }}"
+        run: dotnet publish --configuration Release -p:InformationalVersion="${{env.VER_STR}}" -p:Version=${{env.VER_NUM}} -p:FileVersion=${{env.VER_NUM}} -p:AssemblyVersion=${{env.VER_NUM}} -o Publish
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: RunLogged-v${{env.VER_NUM}}
+          path: Publish
+          if-no-files-found: error

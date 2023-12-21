@@ -10,7 +10,7 @@ sealed class HelpForm : Form
 
     public HelpForm(string content)
     {
-        Text = "UniKey Commands";
+        Text = "UniKey Commands – v[dev]";
         Font = new Font("Calibri", 12);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MinimizeBox = false;
