@@ -45,7 +45,7 @@ public static class Conversions
         }
     }
 
-    public static ScriptInfo Cyrillic = new ScriptInfo
+    public static ScriptInfo Cyrillic = new()
     {
         Key = "c",
         Name = "Cyrillic",
@@ -57,7 +57,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo RussianNative = new ScriptInfo
+    public static ScriptInfo RussianNative = new()
     {
         Letters = @"
                 a→а, b→б, v→в, g→г, d→д, e→е, yo→ё, zh→ж, z→з, i→и, j→й, k→к, l→л, m→м, n→н, o→о, p→п, r→р, s→с, t→т, u→у, f→ф, x→х, h→х, c→ц, ch→ч, sh→ш, shch→щ, `→ъ, y→ы, '→ь, eh→э, yu→ю, ju→ю, ya→я, ja→я
@@ -67,7 +67,7 @@ public static class Conversions
         AutoCaps = true
     };
 
-    public static ScriptInfo Greek = new ScriptInfo
+    public static ScriptInfo Greek = new()
     {
         Key = "g",
         Name = "Greek",
@@ -78,7 +78,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo Hiragana = new ScriptInfo
+    public static ScriptInfo Hiragana = new()
     {
         Key = "hi",
         Name = "Hiragana",
@@ -91,7 +91,7 @@ public static class Conversions
         CaseSensitive = false
     };
 
-    public static ScriptInfo Katakana = new ScriptInfo
+    public static ScriptInfo Katakana = new()
     {
         Key = "ka",
         Name = "Katakana",
@@ -105,7 +105,7 @@ public static class Conversions
         CaseSensitive = false
     };
 
-    public static ScriptInfo SmallCaps = new ScriptInfo
+    public static ScriptInfo SmallCaps = new()
     {
         Key = "sc",
         Name = "Small caps",
@@ -113,7 +113,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathBold = new ScriptInfo
+    public static ScriptInfo MathBold = new()
     {
         Key = "mb",
         Name = "Math bold",
@@ -121,7 +121,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathItalic = new ScriptInfo
+    public static ScriptInfo MathItalic = new()
     {
         Key = "mi",
         Name = "Math italic",
@@ -129,7 +129,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathBoldItalic = new ScriptInfo
+    public static ScriptInfo MathBoldItalic = new()
     {
         Key = "mbi",
         Name = "Math bold italic",
@@ -137,7 +137,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathSansSerif = new ScriptInfo
+    public static ScriptInfo MathSansSerif = new()
     {
         Key = "mss",
         Name = "Math sans-serif",
@@ -145,7 +145,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathSansSerifBold = new ScriptInfo
+    public static ScriptInfo MathSansSerifBold = new()
     {
         Key = "mssb",
         Name = "Math sans-serif bold",
@@ -153,7 +153,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathSansSerifItalic = new ScriptInfo
+    public static ScriptInfo MathSansSerifItalic = new()
     {
         Key = "mssi",
         Name = "Math sans-serif italic",
@@ -161,7 +161,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathSansSerifBoldItalic = new ScriptInfo
+    public static ScriptInfo MathSansSerifBoldItalic = new()
     {
         Key = "mssbi",
         Name = "Math sans-serif bold italic",
@@ -169,7 +169,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathScript = new ScriptInfo
+    public static ScriptInfo MathScript = new()
     {
         Key = "ms",
         Name = "Math script",
@@ -177,7 +177,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathScriptBold = new ScriptInfo
+    public static ScriptInfo MathScriptBold = new()
     {
         Key = "msb",
         Name = "Math script bold",
@@ -185,7 +185,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathFraktur = new ScriptInfo
+    public static ScriptInfo MathFraktur = new()
     {
         Key = "mf",
         Name = "Math fraktur",
@@ -193,7 +193,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathFrakturBold = new ScriptInfo
+    public static ScriptInfo MathFrakturBold = new()
     {
         Key = "mfb",
         Name = "Math fraktur bold",
@@ -201,7 +201,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathMonospace = new ScriptInfo
+    public static ScriptInfo MathMonospace = new()
     {
         Key = "mm",
         Name = "Math monospace",
@@ -209,7 +209,7 @@ public static class Conversions
         CaseSensitive = true
     };
 
-    public static ScriptInfo MathDoubleStruck = new ScriptInfo
+    public static ScriptInfo MathDoubleStruck = new()
     {
         Key = "md",
         Name = "Math double-struck",

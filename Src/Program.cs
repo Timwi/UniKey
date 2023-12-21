@@ -125,7 +125,7 @@ static class Program
         try
         {
             return Regex.Replace(
-                ClipboardGetText(),
+                s,
                 @"&(#x[0-9a-fA-F]+|#\d+|\w+);",
                 v =>
                 {
@@ -166,8 +166,7 @@ static class Program
     private static ReplaceResult add(string key, int length)
     {
         var newRepl = ClipboardGetText();
-        string existing;
-        if (Settings.Replacers.TryGetValue(key, out existing))
+        if (Settings.Replacers.TryGetValue(key, out string existing))
         {
             Settings.Replacers[key] = newRepl;
             saveLater();
@@ -269,7 +268,7 @@ static class Program
 
         try
         {
-            UnicodeData = new Dictionary<int, string>();
+            UnicodeData = [];
             var filename = Settings.UnicodeDataFile == null ? PathUtil.AppPathCombine("UnicodeData.txt") : PathUtil.ExpandPath(Settings.UnicodeDataFile);
             foreach (var line in File.ReadAllText(filename).Replace("\r", "").Split('\n'))
             {
@@ -317,7 +316,7 @@ static class Program
         fsw.Renamed += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
         fsw.EnableRaisingEvents = true;
 
-        KeyboardListener = new GlobalKeyboardListener();
+        KeyboardListener = new();
         KeyboardListener.HookAllKeys = true;
         KeyboardListener.KeyDown += keyDown;
         KeyboardListener.KeyUp += keyUp;
@@ -334,33 +333,31 @@ static class Program
             bool usePw = true;
             bool result = Ut.OnExceptionRetry(() => Ut.WaitSharingVio(() =>
             {
-                using (var f = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Open))
+                using var f = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Open);
+                var start = f.Read(5).FromUtf8();
+                if (start == "passw")
                 {
-                    var start = f.Read(5).FromUtf8();
-                    if (start == "passw")
+                    if (Password == null)
+                        Password = InputBox.GetLine("Enter password:", caption: "Password");
+                    if (Password == null)
+                        return false;
+                    var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
+                    var key = passwordDeriveBytes.GetBytes(16);
+                    var rij = Rijndael.Create();
+                    var rijDec = rij.CreateDecryptor(key, _iv);
+                    try
                     {
-                        if (Password == null)
-                            Password = InputBox.GetLine("Enter password:", caption: "Password");
-                        if (Password == null)
-                            return false;
-                        var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
-                        var key = passwordDeriveBytes.GetBytes(16);
-                        var rij = Rijndael.Create();
-                        var rijDec = rij.CreateDecryptor(key, _iv);
-                        try
-                        {
-                            using (var cStream = new CryptoStream(f, rijDec, CryptoStreamMode.Read))
-                                Settings = ClassifyXml.Deserialize<Settings>(XElement.Parse(cStream.ReadAllBytes().FromUtf8()));
-                        }
-                        catch (Exception e)
-                        {
-                            DlgMessage.Show("Could not decrypt {0}:\n{1}\nPassword may be wrong. Exiting.".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Error, "E&xit UniKey");
-                            return false;
-                        }
+                        using var cStream = new CryptoStream(f, rijDec, CryptoStreamMode.Read);
+                        Settings = ClassifyXml.Deserialize<Settings>(XElement.Parse(cStream.ReadAllBytes().FromUtf8()));
                     }
-                    else
-                        usePw = false;
+                    catch (Exception e)
+                    {
+                        DlgMessage.Show("Could not decrypt {0}:\n{1}\nPassword may be wrong. Exiting.".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Error, "E&xit UniKey");
+                        return false;
+                    }
                 }
+                else
+                    usePw = false;
                 return true;
             }, maximum: TimeSpan.FromSeconds(20)), attempts: 3, delayMs: 3 * 1000);
             if (!result)
@@ -450,12 +447,10 @@ static class Program
                         var rij = Rijndael.Create();
 
                         var rijEnc = rij.CreateEncryptor(key, _iv);
-                        using (var outputStream = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Create))
-                        {
-                            outputStream.Write("passw".ToUtf8());
-                            using (var cStream = new CryptoStream(outputStream, rijEnc, CryptoStreamMode.Write))
-                                cStream.Write(ClassifyXml.Serialize(Settings).ToString().ToUtf8());
-                        }
+                        using var outputStream = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Create);
+                        outputStream.Write("passw".ToUtf8());
+                        using var cStream = new CryptoStream(outputStream, rijEnc, CryptoStreamMode.Write);
+                        cStream.Write(ClassifyXml.Serialize(Settings).ToString().ToUtf8());
                     }
                     else
                         ClassifyXml.SerializeToFile(Settings, MachineSettings.SettingsPathExpanded);
@@ -585,7 +580,7 @@ static class Program
 
     private static Form _gridForm;
     private static Screen _gridFormScreen;
-    private static Stack<Rectangle> _gridUndo = new Stack<Rectangle>();
+    private static Stack<Rectangle> _gridUndo = [];
     private static bool _rightMouseButton;
     private static Point? _dragStartFrom;
 
@@ -605,9 +600,9 @@ static class Program
                         MinimizeBox = false,
                         MaximizeBox = false,
                         StartPosition = FormStartPosition.Manual,
-                        ShowInTaskbar = false
+                        ShowInTaskbar = false,
+                        TopMost = true,
                     };
-                    _gridForm.TopMost = true;
                     _gridForm.Paint += (s, e) =>
                     {
                         var brush = new HatchBrush(HatchStyle.Percent50, Color.White, Color.Black);
@@ -674,7 +669,7 @@ static class Program
         bool newShown = _gridForm != null;
         Screen newScreen = _gridForm != null ? _gridFormScreen : Screen.PrimaryScreen;
         Rectangle newBounds = _gridForm != null ? _gridForm.Bounds : Screen.PrimaryScreen.Bounds;
-        Point pos = new Point(newBounds.Left + newBounds.Width / 2, newBounds.Top + newBounds.Height / 2);
+        Point pos = new(newBounds.Left + newBounds.Width / 2, newBounds.Top + newBounds.Height / 2);
         Action execute = null;
         bool regionFirst = false;
 
@@ -824,9 +819,7 @@ static class Program
                         UndoBufferFrom = UndoBufferFrom.Substring(0, UndoBufferFrom.Length - 1);
                         UndoBufferTo = UndoBufferTo.Substring(0, UndoBufferTo.Length - 1);
                         Buffer = Buffer.Substring(0, Buffer.Length - UndoBufferFrom.Length - 1) + UndoBufferTo;
-                        var t = UndoBufferTo;
-                        UndoBufferTo = UndoBufferFrom;
-                        UndoBufferFrom = t;
+                        (UndoBufferFrom, UndoBufferTo) = (UndoBufferTo, UndoBufferFrom);
                         LastBufferCheck = Buffer.Length;
                     }
                 }
