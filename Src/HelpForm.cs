@@ -11,11 +11,6 @@ sealed class HelpForm : Form
     public HelpForm(string content)
     {
         Text = "UniKey Commands";
-        StartPosition = FormStartPosition.Manual;
-        Width = Screen.PrimaryScreen.WorkingArea.Width / 2;
-        Height = Screen.PrimaryScreen.WorkingArea.Height * 7 / 8;
-        Left = Screen.PrimaryScreen.WorkingArea.Left + Screen.PrimaryScreen.WorkingArea.Width / 4;
-        Top = Screen.PrimaryScreen.WorkingArea.Top + Screen.PrimaryScreen.WorkingArea.Height / 16;
         Font = new Font("Calibri", 12);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MinimizeBox = false;
@@ -36,6 +31,15 @@ sealed class HelpForm : Form
         Controls.Add(_layout);
         AcceptButton = _okButton;
         CancelButton = _okButton;
+
+        AutoScaleMode = AutoScaleMode.Dpi;
+        AutoScaleDimensions = new SizeF(96, 96);
+
+        StartPosition = FormStartPosition.Manual;
+        Width = Screen.PrimaryScreen.WorkingArea.Width / 2;
+        Height = Screen.PrimaryScreen.WorkingArea.Height * 7 / 8;
+        Left = Screen.PrimaryScreen.WorkingArea.Left + Screen.PrimaryScreen.WorkingArea.Width / 4;
+        Top = Screen.PrimaryScreen.WorkingArea.Top + Screen.PrimaryScreen.WorkingArea.Height / 16;
     }
 
     private void close(object _, EventArgs __)

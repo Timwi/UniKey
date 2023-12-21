@@ -254,6 +254,8 @@ static class Program
     [STAThread]
     static void Main()
     {
+        ApplicationConfiguration.Initialize();
+
         foreach (var p in Process.GetProcessesByName("UniKey"))
         {
             if (p.Id != Environment.ProcessId)
