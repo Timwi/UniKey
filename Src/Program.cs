@@ -256,7 +256,7 @@ static class Program
     {
         foreach (var p in Process.GetProcessesByName("UniKey"))
         {
-            if (p.Id != Process.GetCurrentProcess().Id)
+            if (p.Id != Environment.ProcessId)
                 p.Kill();
         }
 
@@ -343,7 +343,7 @@ static class Program
                         return false;
                     var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
                     var key = passwordDeriveBytes.GetBytes(16);
-                    var rij = Rijndael.Create();
+                    var rij = Aes.Create();
                     var rijDec = rij.CreateDecryptor(key, _iv);
                     try
                     {
@@ -444,7 +444,7 @@ static class Program
                     {
                         var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
                         var key = passwordDeriveBytes.GetBytes(16);
-                        var rij = Rijndael.Create();
+                        var rij = Aes.Create();
 
                         var rijEnc = rij.CreateEncryptor(key, _iv);
                         using var outputStream = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Create);
