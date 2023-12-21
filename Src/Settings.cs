@@ -1,26 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using RT.Util;
+﻿using RT.Util;
 
-namespace UniKey
+namespace UniKey;
+
+class Settings
 {
-    class Settings
-    {
-        public bool MouseGridEnabled;
-        public string UnicodeDataFile = null;
-        public Dictionary<string, string> Replacers = new Dictionary<string, string>();
-        public string DebugLogPath = null;
-    }
+    public bool MouseGridEnabled;
+    public string UnicodeDataFile = null;
+    public Dictionary<string, string> Replacers = new Dictionary<string, string>();
+    public string DebugLogPath = null;
+}
 
-    class MachineSettings
+class MachineSettings
+{
+    public string SettingsPath = @"$(AppPath)\UniKey.settings.xml";
+    public string SettingsPathExpanded
     {
-        public string SettingsPath = @"$(AppPath)\UniKey.settings.xml";
-        public string SettingsPathExpanded
-        {
-            get { return PathUtil.ExpandPath(SettingsPath); }
-            set { SettingsPath = PathUtil.UnexpandPath(value); }
-        }
+        get { return PathUtil.ExpandPath(SettingsPath); }
+        set { SettingsPath = PathUtil.UnexpandPath(value); }
     }
 }

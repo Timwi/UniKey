@@ -1,23 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using RT.Util.ExtensionMethods;
+﻿using RT.Util.ExtensionMethods;
 
-namespace UniKey
+namespace UniKey;
+
+sealed class SearchItem
 {
-    sealed class SearchItem
+    public int CodePoint;
+    public string Name;
+    public int Score;
+    public string GetReplacer(Dictionary<string, string> replacers)
     {
-        public int CodePoint;
-        public string Name;
-        public int Score;
-        public string GetReplacer(Dictionary<string, string> replacers)
-        {
-            return replacers.Where(kvp => kvp.Value == char.ConvertFromUtf32(CodePoint)).Select(kvp => kvp.Key).JoinString("; ");
-        }
-        public override string ToString()
-        {
-            return "({0}) U+{1:X4} {2}".Fmt(Score, CodePoint, Name);
-        }
+        return replacers.Where(kvp => kvp.Value == char.ConvertFromUtf32(CodePoint)).Select(kvp => kvp.Key).JoinString("; ");
+    }
+    public override string ToString()
+    {
+        return "({0}) U+{1:X4} {2}".Fmt(Score, CodePoint, Name);
     }
 }
