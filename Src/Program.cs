@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing.Drawing2D;
 using System.Globalization;
 using System.Security.Cryptography;
@@ -7,7 +8,6 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using RT.Keyboard;
 using RT.Serialization;
-using RT.Serialization.Settings;
 using RT.Util;
 using RT.Util.ExtensionMethods;
 using RT.Util.Forms;
@@ -18,10 +18,8 @@ namespace UniKey;
 static class Program
 {
     static Settings Settings;
-    static MachineSettings MachineSettings => MachineSettingsFile.Settings;
-    static SettingsFile<MachineSettings> MachineSettingsFile;
     static GlobalKeyboardListener KeyboardListener;
-    static readonly List<Keys> Pressed = new List<Keys>();
+    static readonly List<Keys> Pressed = new();
     static bool Processing = false;
     static string Buffer = string.Empty;
     static int LastBufferCheck = 0;
@@ -60,7 +58,7 @@ static class Program
             m => findRules(m.Length)),
 
         new CommandInfo(@"\{html( ['""]+)?\}$", @"*{{html}}*, *{{html '}}*, *{{html """"}}*, *{{html '""""}}*", @"""HTML-escapes the current contents of the clipboard and outputs the result as keystrokes. By default, only <, > and & are escaped. Optionally specify ' (apostrophe) and/or """" (double-quote) to escape those, too.""",
-            m => new ReplaceResult(m.Length, ClipboardGetText().HtmlEscape(!m.Groups[1].Value.Contains("'"), !m.Groups[1].Value.Contains("\"")))),
+            m => new ReplaceResult(m.Length, ClipboardGetText().HtmlEscape(!m.Groups[1].Value.Contains('\''), !m.Groups[1].Value.Contains('"')))),
 
         new CommandInfo(@"\{unhtml\}$", @"*{{unhtml}}*", @"Reverses HTML escaping (HTML entities) in the current contents of the clipboard and outputs the result as keystrokes.",
             m => new ReplaceResult(m.Length, unHtml(ClipboardGetText()))),
@@ -166,7 +164,7 @@ static class Program
     private static ReplaceResult add(string key, int length)
     {
         var newRepl = ClipboardGetText();
-        if (Settings.Replacers.TryGetValue(key, out string existing))
+        if (Settings.Replacers.TryGetValue(key, out var existing))
         {
             Settings.Replacers[key] = newRepl;
             saveLater();
@@ -179,11 +177,11 @@ static class Program
 
     private static ReplaceResult ren(string oldInput, string newInput, int length)
     {
-        if (!Settings.Replacers.ContainsKey(oldInput))
+        if (!Settings.Replacers.TryGetValue(oldInput, out var value))
             return new ReplaceResult(length, "not found");
         if (Settings.Replacers.ContainsKey(newInput))
             return new ReplaceResult(length, "failed: new key already exists");
-        var replaceWith = Settings.Replacers[oldInput];
+        var replaceWith = value;
         Settings.Replacers.Remove(oldInput);
         Settings.Replacers[newInput] = replaceWith;
         saveLater();
@@ -301,17 +299,17 @@ static class Program
                 Application.Exit();
         };
 
-        var fsw = new FileSystemWatcher(Path.GetDirectoryName(MachineSettings.SettingsPathExpanded), Path.GetFileName(MachineSettings.SettingsPathExpanded))
+        var fsw = new FileSystemWatcher(Path.GetDirectoryName(settingsPath), Path.GetFileName(settingsPath))
         {
             IncludeSubdirectories = false,
             NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
         };
 
-        Action scheduleReloadSettings = () =>
+        void scheduleReloadSettings()
         {
             reloadSettingsFileTimer.Enabled = false;
             reloadSettingsFileTimer.Enabled = true;
-        };
+        }
         fsw.Changed += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
         fsw.Created += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
         fsw.Deleted += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
@@ -325,22 +323,21 @@ static class Program
         Application.Run();
     }
 
+    private static readonly string settingsPath = PathUtil.AppPathCombine("UniKey.settings.xml");
+
     private static bool loadSettings()
     {
-        MachineSettingsFile = new SettingsFileXml<MachineSettings>("UniKey", SettingsLocation.MachineLocal);
-        MachineSettingsFile.Save();
         again:
         try
         {
             bool usePw = true;
             bool result = Ut.OnExceptionRetry(() => Ut.WaitSharingVio(() =>
             {
-                using var f = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Open);
+                using var f = File.Open(settingsPath, FileMode.Open);
                 var start = f.Read(5).FromUtf8();
                 if (start == "passw")
                 {
-                    if (Password == null)
-                        Password = InputBox.GetLine("Enter password:", caption: "Password");
+                    Password ??= InputBox.GetLine("Enter password:", caption: "Password");
                     if (Password == null)
                         return false;
                     var passwordDeriveBytes = new PasswordDeriveBytes(Password, _salt);
@@ -354,7 +351,7 @@ static class Program
                     }
                     catch (Exception e)
                     {
-                        DlgMessage.Show("Could not decrypt {0}:\n{1}\nPassword may be wrong. Exiting.".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Error, "E&xit UniKey");
+                        DlgMessage.Show("Could not decrypt {0}:\n{1}\nPassword may be wrong. Exiting.".Fmt(settingsPath, e.Message), "Error", DlgType.Error, "E&xit UniKey");
                         return false;
                     }
                 }
@@ -365,30 +362,37 @@ static class Program
             if (!result)
                 return false;
             if (!usePw)
-                Settings = ClassifyXml.DeserializeFile<Settings>(MachineSettings.SettingsPathExpanded);
+                Settings = ClassifyXml.DeserializeFile<Settings>(settingsPath);
         }
         catch (Exception e)
         {
             again2:
-            var result = DlgMessage.Show("Could not load {0}: {1}".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Question, "&Create new file here", "&Browse for new/existing file", "&Retry", "E&xit UniKey");
-            if (result == 3)
-                return false;
-            if (result == 2)
-                goto again;
-            if (result == 1)
+            var result = DlgMessage.Show("Could not load {0}: {1}".Fmt(settingsPath, e.Message), "Error", DlgType.Question, "&Create new file here", "&Import existing file", "&Retry", "E&xit UniKey");
+            switch (result)
             {
-                var dlg = new OpenFileDialog();
-                dlg.Title = "Choose the location of your settings file";
-                dlg.CheckPathExists = dlg.CheckFileExists = false;
-                if (dlg.ShowDialog() != DialogResult.OK)
-                    goto again2;
-                MachineSettings.SettingsPathExpanded = dlg.FileName;
-                MachineSettingsFile.Save(throwOnError: true);
-                goto again;
+                case 0:     // Create new file here
+                    Settings = new Settings();
+                    if (!save())
+                        return false;
+                    break;
+
+                case 1:     // Import existing file
+                {
+                    var dlg = new OpenFileDialog();
+                    dlg.Title = "Choose settings file to import";
+                    dlg.CheckPathExists = dlg.CheckFileExists = false;
+                    if (dlg.ShowDialog() != DialogResult.OK || !File.Exists(dlg.FileName))
+                        goto again2;
+                    File.Copy(dlg.FileName, settingsPath);
+                    goto again;
+                }
+
+                case 2:     // Retry
+                    goto again;
+
+                case 3:     // Exit UniKey
+                    return false;
             }
-            Settings = new Settings();
-            if (!save())
-                return false;
         }
         return true;
     }
@@ -449,19 +453,19 @@ static class Program
                         var rij = Aes.Create();
 
                         var rijEnc = rij.CreateEncryptor(key, _iv);
-                        using var outputStream = File.Open(MachineSettings.SettingsPathExpanded, FileMode.Create);
+                        using var outputStream = File.Open(settingsPath, FileMode.Create);
                         outputStream.Write("passw".ToUtf8());
                         using var cStream = new CryptoStream(outputStream, rijEnc, CryptoStreamMode.Write);
                         cStream.Write(ClassifyXml.Serialize(Settings).ToString().ToUtf8());
                     }
                     else
-                        ClassifyXml.SerializeToFile(Settings, MachineSettings.SettingsPathExpanded);
+                        ClassifyXml.SerializeToFile(Settings, settingsPath);
                 }, TimeSpan.FromSeconds(20));
             }, attempts: 3, delayMs: 5 * 1000);
         }
         catch (Exception e)
         {
-            if (DlgMessage.Show("Error saving {0}: {1}".Fmt(MachineSettings.SettingsPathExpanded, e.Message), "Error", DlgType.Error, "&Retry", "&Ignore") == 0)
+            if (DlgMessage.Show("Error saving {0}: {1}".Fmt(settingsPath, e.Message), "Error", DlgType.Error, "&Retry", "&Ignore") == 0)
                 goto retry;
             return false;
         }
@@ -469,6 +473,8 @@ static class Program
     }
 
     static readonly byte[] keyboardState = new byte[256];
+
+    [SuppressMessage("Performance", "CA1806:Do not ignore method results", Justification = "not necessary in this case")]
     static string getCharsFromKeys(Keys keys, bool shift)
     {
         var buf = new StringBuilder(16);
@@ -477,7 +483,7 @@ static class Program
         return buf.ToString();
     }
 
-    static Keys[] _numKeys = Ut.NewArray(
+    static readonly Keys[] _numKeys = Ut.NewArray(
         // Without shift
         Keys.NumPad0, Keys.NumPad1, Keys.NumPad2, Keys.NumPad3, Keys.NumPad4, Keys.NumPad5, Keys.NumPad6, Keys.NumPad7, Keys.NumPad8, Keys.NumPad9, Keys.Decimal,
         // With shift
@@ -582,7 +588,7 @@ static class Program
 
     private static Form _gridForm;
     private static Screen _gridFormScreen;
-    private static Stack<Rectangle> _gridUndo = [];
+    private static readonly Stack<Rectangle> _gridUndo = new();
     private static bool _rightMouseButton;
     private static Point? _dragStartFrom;
 
@@ -658,8 +664,7 @@ static class Program
                     _gridForm = null;
                 }
             }
-            if (extraAction != null)
-                extraAction();
+            extraAction?.Invoke();
         }));
     }
 

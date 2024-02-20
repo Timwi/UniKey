@@ -1,6 +1,4 @@
-﻿using RT.Util;
-
-namespace UniKey;
+﻿namespace UniKey;
 
 class Settings
 {
@@ -8,14 +6,4 @@ class Settings
     public string UnicodeDataFile = null;
     public Dictionary<string, string> Replacers = [];
     public string DebugLogPath = null;
-}
-
-class MachineSettings
-{
-    public string SettingsPath = @"$(AppPath)\UniKey.settings.xml";
-    public string SettingsPathExpanded
-    {
-        get { return PathUtil.ExpandPath(SettingsPath); }
-        set { SettingsPath = PathUtil.UnexpandPath(value); }
-    }
 }

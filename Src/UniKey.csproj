@@ -1,27 +1,24 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
     <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>disable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
-    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ImplicitUsings>enable</ImplicitUsings>
-    <LangVersion>latest</LangVersion>
-    <Configurations>Debug;DebugLog;Release</Configurations>
-
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>false</SelfContained>
-    <DebugType>embedded</DebugType>
-  </PropertyGroup>
-
-  <PropertyGroup Condition=" '$(Configuration)' == 'DebugLog' ">
-    <DefineConstants>$(DefineConstants);DEBUG;DEBUG_LOG</DefineConstants>
+    <Title>UniKey</Title>
+    <Authors>Timwi</Authors>
+    <Description>A background app for keyboard macros/commands.</Description>
+    <PackageProjectUrl>https://github.com/Timwi/UniKey/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Timwi/UniKey/</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="RT.Keyboard" Version="1.23.3" />
-    <PackageReference Include="RT.Serialization.Xml" Version="2.0.1759" />
-    <PackageReference Include="RT.Util" Version="2.0.1759" />
+    <PackageReference Include="RT.Serialization" Version="2.0.1767" />
+    <PackageReference Include="RT.Serialization.Xml" Version="2.0.1767" />
+    <PackageReference Include="RT.Util" Version="2.0.1767" />
+    <PackageReference Include="RT.Util.Core" Version="2.0.1767" />
   </ItemGroup>
 
 </Project>

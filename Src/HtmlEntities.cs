@@ -2,7 +2,7 @@
 
 public static class HtmlEntities
 {
-    public static Dictionary<string, string> Data = new()
+    public static readonly Dictionary<string, string> Data = new()
     {
         { "Tab", "\t" },
         { "NewLine", "\n" },
