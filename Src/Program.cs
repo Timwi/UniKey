@@ -844,7 +844,9 @@ static class Program
                     }
                     keystrokes.AddRange(Enumerable.Repeat<object>(Keys.Back, oldBuffer.Length - i));
                     for (int ix = i; ix < Buffer.Length; ix++)
-                        if (Buffer[ix] != '\r')
+                        if (Buffer[ix] == '\t')
+                            keystrokes.Add(Keys.Tab);
+                        else if (Buffer[ix] != '\r')
                             keystrokes.Add(Buffer[ix] == '\n' ? (object) Keys.Enter : Buffer[ix]);
                     UtWin.SendKeystrokes(keystrokes);
                 }
