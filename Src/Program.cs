@@ -19,7 +19,7 @@ static class Program
 {
     static Settings Settings;
     static GlobalKeyboardListener KeyboardListener;
-    static readonly List<Keys> Pressed = new();
+    static readonly List<Keys> Pressed = [];
     static bool Processing = false;
     static string Buffer = string.Empty;
     static int LastBufferCheck = 0;
@@ -132,7 +132,7 @@ static class Program
                     var val = v.Groups[1].Value;
                     if (val.StartsWith("#x"))
                         return char.ConvertFromUtf32(Convert.ToInt32(val.Substring(2), 16));
-                    if (val.StartsWith("#"))
+                    if (val.StartsWith('#'))
                         return char.ConvertFromUtf32(Convert.ToInt32(val.Substring(1), 10));
                     return HtmlEntities.Data[val];
                 }).Replace("\r", "");
@@ -574,11 +574,11 @@ static class Program
             if (Settings.DebugLogPath != null)
             {
                 if ((DateTime.UtcNow - start).TotalMilliseconds >= 100)
-                    File.AppendAllLines(Settings.DebugLogPath, new[] { "{2}  Down: {0}, took {1:0} ms".Fmt(e.VirtualKeyCode, (DateTime.UtcNow - start).TotalMilliseconds, DateTime.Now) });
+                    File.AppendAllLines(Settings.DebugLogPath, ["{2}  Down: {0}, took {1:0} ms".Fmt(e.VirtualKeyCode, (DateTime.UtcNow - start).TotalMilliseconds, DateTime.Now)]);
                 else if ((DateTime.UtcNow - _lastHeartbeat).TotalSeconds >= 10)
                 {
                     _lastHeartbeat = DateTime.UtcNow;
-                    File.AppendAllLines(Settings.DebugLogPath, new[] { "{0}  Still alive!".Fmt(DateTime.Now) });
+                    File.AppendAllLines(Settings.DebugLogPath, ["{0}  Still alive!".Fmt(DateTime.Now)]);
                 }
             }
         }
@@ -855,7 +855,7 @@ static class Program
             Processing = false;
             if (Settings.DebugLogPath != null)
                 if ((DateTime.UtcNow - start).TotalMilliseconds >= 100)
-                    File.AppendAllLines(Settings.DebugLogPath, new[] { "{2}  Up: {0}, took {1:0} ms".Fmt(e.VirtualKeyCode, (DateTime.UtcNow - start).TotalMilliseconds, DateTime.Now) });
+                    File.AppendAllLines(Settings.DebugLogPath, ["{2}  Up: {0}, took {1:0} ms".Fmt(e.VirtualKeyCode, (DateTime.UtcNow - start).TotalMilliseconds, DateTime.Now)]);
         }
     }
 

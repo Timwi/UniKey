@@ -2,18 +2,10 @@
 
 namespace UniKey;
 
-sealed class CommandInfo
+sealed class CommandInfo(string regex, string commandName, string helpString, Func<Match, ReplaceResult> function)
 {
-    public string Regex;
-    public string CommandName;
-    public string HelpString;
-    public Func<Match, ReplaceResult> Function;
-
-    public CommandInfo(string regex, string commandName, string helpString, Func<Match, ReplaceResult> function)
-    {
-        Regex = regex;
-        CommandName = commandName;
-        HelpString = helpString;
-        Function = function;
-    }
+    public readonly string Regex = regex;
+    public readonly string CommandName = commandName;
+    public readonly string HelpString = helpString;
+    public readonly Func<Match, ReplaceResult> Function = function;
 }
