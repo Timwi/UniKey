@@ -26,6 +26,7 @@ static class Program
     static string UndoBufferFrom = null;
     static string UndoBufferTo = null;
     static string Password = null;
+    static FileSystemWatcher DetectSettingsFileChange;
 
     static Control GuiThreadInvoker;
 
@@ -291,7 +292,7 @@ static class Program
         GuiThreadInvoker = new Form();
         var _ = GuiThreadInvoker.Handle;
 
-        var reloadSettingsFileTimer = new Timer { Enabled = false, Interval = 5000 };
+        var reloadSettingsFileTimer = new Timer { Enabled = false, Interval = 1500 };
         reloadSettingsFileTimer.Tick += delegate
         {
             reloadSettingsFileTimer.Enabled = false;
@@ -299,7 +300,7 @@ static class Program
                 Application.Exit();
         };
 
-        var fsw = new FileSystemWatcher(Path.GetDirectoryName(settingsPath), Path.GetFileName(settingsPath))
+        DetectSettingsFileChange = new FileSystemWatcher(Path.GetDirectoryName(settingsPath), Path.GetFileName(settingsPath))
         {
             IncludeSubdirectories = false,
             NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size,
@@ -310,14 +311,13 @@ static class Program
             reloadSettingsFileTimer.Enabled = false;
             reloadSettingsFileTimer.Enabled = true;
         }
-        fsw.Changed += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
-        fsw.Created += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
-        fsw.Deleted += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
-        fsw.Renamed += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
-        fsw.EnableRaisingEvents = true;
+        DetectSettingsFileChange.Changed += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
+        DetectSettingsFileChange.Created += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
+        DetectSettingsFileChange.Deleted += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
+        DetectSettingsFileChange.Renamed += delegate { GuiThreadInvoker.BeginInvoke(scheduleReloadSettings); };
+        DetectSettingsFileChange.EnableRaisingEvents = true;
 
-        KeyboardListener = new();
-        KeyboardListener.HookAllKeys = true;
+        KeyboardListener = new() { HookAllKeys = true };
         KeyboardListener.KeyDown += keyDown;
         KeyboardListener.KeyUp += keyUp;
         Application.Run();
@@ -377,7 +377,6 @@ static class Program
                     break;
 
                 case 1:     // Import existing file
-                {
                     var dlg = new OpenFileDialog();
                     dlg.Title = "Choose settings file to import";
                     dlg.CheckPathExists = dlg.CheckFileExists = false;
@@ -385,7 +384,6 @@ static class Program
                         goto again2;
                     File.Copy(dlg.FileName, settingsPath);
                     goto again;
-                }
 
                 case 2:     // Retry
                     goto again;
