@@ -211,8 +211,8 @@ static class Program
         if (words == null || words.Length < 1)
             return new ReplaceResult(length, "No search terms given.");
         var candidatesStr = FindCharacters(words)
-            .Select(si => (char) (0x202a /* left-to-right override */) + char.ConvertFromUtf32(si.CodePoint) + (char) (0x202c /* pop directional formatting */) + "    " +
-                                   si.GetReplacer(Settings.Replacers) + "    U+" + si.CodePoint.ToString("X4") + "    " + si.Name + Environment.NewLine)
+            .Select(si => (char) (0x202a /* left-to-right override */) + char.ConvertFromUtf32(si.CodePoint) + (char) (0x202c /* pop directional formatting */) + "\t" +
+                                   si.GetReplacer(Settings.Replacers) + "\tU+" + si.CodePoint.ToString("X4") + "\t" + si.Name + Environment.NewLine)
             .JoinString();
         if (candidatesStr.Length > 0)
             ClipboardSetText(candidatesStr);
