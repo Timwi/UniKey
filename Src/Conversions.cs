@@ -220,6 +220,8 @@ public static class Conversions
 
     public static string Convert(ScriptInfo script, string input)
     {
+        if (input == "-")
+            input = Clipboard.GetText();
         var output = "";
         var comparison = script.CaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
 
