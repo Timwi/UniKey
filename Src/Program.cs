@@ -104,7 +104,16 @@ static class Program
             {
                 Settings.MouseGridEnabled = m.Groups[1].Value == "on";
                 saveLater();
-                return new ReplaceResult(m.Length, "Mouse grid now {0}.".Fmt(m.Groups[1].Value));
+                return new ReplaceResult(m.Length, "Mouse grid now {0}.".Fmt(Settings.MouseGridEnabled ? "enabled" : "disabled"));
+            }),
+
+        new CommandInfo(@"\{set undo (on|off)\}", "*{{set undo on}}*, *{{set undo off}}*",
+            @"Enables or disables the undo feature. When enabled, the latest replacement can be undone by pressing the backslash key (Oem5).",
+            m =>
+            {
+                Settings.UndoDisabled = m.Groups[1].Value == "off";
+                saveLater();
+                return new ReplaceResult(m.Length, "Undo is now {0}.".Fmt(Settings.UndoDisabled ? "disabled" : "enabled"));
             }),
 
         new CommandInfo(@"\{guid\}$", @"*{{guid}}*", @"Outputs a randomly generated GUID.",
@@ -558,7 +567,7 @@ static class Program
                 if (!alt && !ctrl)
                 {
                     // special-case the secondary backslash key
-                    var str = (e.VirtualKeyCode == Keys.Oem5) ? "←" : getCharsFromKeys(e.VirtualKeyCode, shift);
+                    var str = (!Settings.UndoDisabled && e.VirtualKeyCode == Keys.Oem5) ? "←" : getCharsFromKeys(e.VirtualKeyCode, shift);
                     Buffer += str;
                     if (UndoBufferFrom != null)
                     {
