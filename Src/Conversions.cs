@@ -50,22 +50,14 @@ public static class Conversions
     {
         Key = "c",
         Name = "Cyrillic",
-        Letters = @"
-                a→а, b→б, v→в, g→г, d→д, e→е, yo→ё, zh→ж, z→з, i→и, j→й, k→к, l→л, m→м, n→н, o→о, p→п, r→р, s→с, t→т, u→у, f→ф, x→х, c→ц, ch→ч, sh→ш, shch→щ, `→ъ, y→ы, '→ь, eh→э, yu→ю, ya→я
-                A→А, B→Б, V→В, G→Г,D→Д, E→Е, Yo|YO→Ё, Zh|ZH→Ж, Z→З, I→И, J→Й, K→К, L→Л, M→М, N→Н, O→О, P→П, R→Р, S→С, T→Т, U→У, F→Ф, X→Х, C→Ц, Ch|CH→Ч, Sh|SH→Ш, Shch|SHCH→Щ, ~→Ъ, Y→Ы, ""→Ь, Eh|EH→Э, Yu|YU→Ю, Ya|YA→Я
-                gh→ґ,Gh|GH→Ґ, Jh|JH→Ј, jh→ј, ye→є, Ye|YE→Є, ih→і, yi→ї, Ih|IH→І, Yi|YI→Ї
-            ",
+        Letters = """
+            A→А, B→Б, V→В, G→Г,D→Д, E→Е, Yo|YO→Ё, Zh|ZH→Ж, Z→З, I→И, J→Й, K→К, L→Л, M→М, N→Н, O→О, P→П, R→Р, S→С, T→Т, U→У, F→Ф, X→Х, C→Ц, Ch|CH→Ч, Sh|SH→Ш, Shch|SHCH→Щ, ~→Ъ, Y→Ы, ""→Ь, Eh|EH→Э, Yu|YU→Ю, Ya|YA→Я
+            Gh|GH→Ґ, Ye|YE→Є, Ih|IH→І, Yi|YI→Ї, Jh|JH→Ј, Dhh|DHH→Џ, Nh|NH→Њ, Lh|LH→Љ, Dh|DH→Ђ
+            
+            a→а, b→б, v→в, g→г, d→д, e→е, yo→ё, zh→ж, z→з, i→и, j→й, k→к, l→л, m→м, n→н, o→о, p→п, r→р, s→с, t→т, u→у, f→ф, x→х, c→ц, ch→ч, sh→ш, shch→щ, `→ъ, y→ы, '→ь, eh→э, yu→ю, ya→я
+            gh→ґ, ye→є, ih→і, yi→ї, jh→ј, dhh→џ, nh→њ, lh→љ, dh→ђ
+            """,
         CaseSensitive = true
-    };
-
-    public static readonly ScriptInfo RussianNative = new()
-    {
-        Letters = @"
-                a→а, b→б, v→в, g→г, d→д, e→е, yo→ё, zh→ж, z→з, i→и, j→й, k→к, l→л, m→м, n→н, o→о, p→п, r→р, s→с, t→т, u→у, f→ф, x→х, h→х, c→ц, ch→ч, sh→ш, shch→щ, `→ъ, y→ы, '→ь, eh→э, yu→ю, ju→ю, ya→я, ja→я
-                ~→Ъ, ""→Ь, ¬→Ъ, @→Ь
-            ",
-        CaseSensitive = true,
-        AutoCaps = true
     };
 
     public static readonly ScriptInfo Greek = new()
