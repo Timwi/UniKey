@@ -17,11 +17,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="RT.Keyboard" Version="1.23.3" />
-    <PackageReference Include="RT.Serialization" Version="2.0.1767" />
-    <PackageReference Include="RT.Serialization.Xml" Version="2.0.1767" />
-    <PackageReference Include="RT.Util" Version="2.0.1767" />
-    <PackageReference Include="RT.Util.Core" Version="2.0.1767" />
+    <PackageReference Include="RT.Keyboard" Version="1.25.5" />
+    <PackageReference Include="RT.Serialization" Version="2.0.1788" />
+    <PackageReference Include="RT.Serialization.Xml" Version="2.0.1788" />
+    <PackageReference Include="RT.Util" Version="2.0.1788" />
+    <PackageReference Include="RT.Util.Core" Version="2.0.1788" />
   </ItemGroup>
 
 </Project>
